@@ -125,7 +125,7 @@ class Potentiometer <Pin, PotentiometerDetent::CENTER> : public Potentiometer<Pi
     @brief Check current potentiometer value and notify observer if value has changed
     @param value Potentiometer value to check
     */
-    static void set(const uint16_t value) override
+    static void set(const uint16_t value)
     {
         Potentiometer<Pin>::s_lastValue = value;
         Potentiometer<Pin>::s_subject.notifiyObserver(calc_potvalue(value));
