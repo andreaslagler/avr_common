@@ -48,7 +48,7 @@ struct MMIORegister
     @brief Read memory-mapped I/O register
     @result Register content
     */
-    [[nodiscard]] static RegisterType read() __attribute__((always_inline))
+    static RegisterType read() __attribute__((always_inline))
     {
         return *(volatile RegisterType *)(t_registerAddress);
     }
@@ -91,7 +91,7 @@ class BitGroupInRegister
     @brief Read register bit group
     @result Register bit group content
     */
-    [[nodiscard]] static Type read()
+    static Type read()
     {
         check();
         return static_cast<Type>((Register::read() & s_bitMask) >> t_firstBit);
@@ -136,7 +136,7 @@ class BitInRegister
     @brief Read selected register bit
     @result Content of selected register bit
     */
-    [[nodiscard]] static bool read() __attribute__((always_inline))
+    static bool read() __attribute__((always_inline))
     {
         check();
         return Register::read() & _BV(t_bit);
