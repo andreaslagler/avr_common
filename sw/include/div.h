@@ -61,6 +61,18 @@ constexpr uint8_t div<4>(const uint8_t numerator)
 }
 
 /**
+@brief Unsigned 8 bit integer division by 6.
+@param numerator Numerator
+@result (Numerator * 171) / 1024
+*/
+template <>
+constexpr uint8_t div<6>(const uint8_t numerator)
+{
+    // Multiplication by 171/1024 doesn't cause any round-off errors for uint8_t
+    return (uint8_t((171 * numerator) >> 8)) >> 2;
+}
+
+/**
 @brief Unsigned 8 bit integer division by 8, trivial.
 @param numerator Numerator
 @result Numerator / 8
@@ -104,7 +116,7 @@ constexpr uint8_t div<100>(const uint8_t numerator)
 template <uint8_t t_denominator>
 constexpr uint8_t mod(uint8_t & numerator)
 {
-    uint8_t remainder = numerator;
+    const uint8_t remainder = numerator;
     numerator = div<t_denominator>(numerator); // Write-back result
     return remainder - numerator;
 }

@@ -31,15 +31,16 @@ Scheduling and executing tasks can be made interrupt-safe using an Atomic class 
 - In the Atomic destructor, the interrupt flags are restored to  allow  for regular operation.
 The implementation of Atomic (i.e. the access to interrupt enable flags) is device-specific.
 In case Atomic is void, the scheduler has zero overhead, but interrupt-safety must be ensured outside the scope of Scheduler.
+@tparam Argument Type of task callback argument
 */
-template <typename Atomic = void>
+template <typename _Delay, typename Atomic, typename Argument>
 class Scheduler;
 
 /**
 @brief Default scheduler class
 */
-template <>
-class Scheduler<void>
+template <typename _Delay, typename Argument>
+class Scheduler<_Delay, void, Argument>
 {
     public:
 
@@ -47,33 +48,36 @@ class Scheduler<void>
     @brief Scheduler delay data type
     Scheduler clock resolution of 1 ms allows delay in the range of 1ms ... 1min
     */
-    typedef uint16_t Delay;
+    typedef _Delay Delay;
     
     /**
     @brief The task class combines a linked list node for insertion into the scheduler queue and an observable subject, so it can notify an observer when executed
     @todo Consider an abstract base class and dynamic polymorphism
     */
-    class Task : public SingleLinkedNode<Task>, public Subject<void>
+    class Task : public SingleLinkedNode<Task>, public Subject<Argument>
     {
         public:
 
         /**
         @brief Default constructor
-        @param observer Callback for task execution 
+        @param observer Callback for task execution
         */
-        constexpr Task(typename Subject<void>::Observer observer = nullptr) : Subject<void>(observer)
+        constexpr Task(typename Subject<Argument>::Observer observer, const Argument & argument) : Subject<Argument>(observer), m_argument(argument)
         {}
 
         /// @brief Task execution callback
         constexpr void execute() const
         {
-            Subject<void>::notifiyObserver();
+            Subject<Argument>::notifyObserver(m_argument);
         }
 
-        private:
+        protected:
 
         // Allow the scheduler to alter the relative delay when scheduling tasks
         friend class Scheduler;
+        
+        // Callback argument
+        Argument m_argument;
 
         // Relative delay wrt previous task
         Delay m_delay {0};
@@ -176,26 +180,28 @@ class Scheduler<void>
         task.m_delay = delay;
     }
 
-    /**
-    @brief Get pointer to the first task in the execution queue (if available)
-    */
-    Task * getNextTask()
-    {
-        return static_cast<Task*>(m_executionQueue.pop());
-    }
 
     /**
     @brief Execute next task in the execution queue
     */
-    void executeNextTask()
+    Task * executeNextTask()
     {
         Task * task = getNextTask();
         if (nullptr != task)
         {
             task->execute();
         }
+        return task;
     }
 
+    protected:
+
+    // Get pointer to the first task in the execution queue (if available)
+    Task * getNextTask()
+    {
+        return static_cast<Task*>(m_executionQueue.pop());
+    }
+    
     private:
 
     // Scheduler head. This points to the next scheduled task
@@ -205,33 +211,101 @@ class Scheduler<void>
     Queue<Task, true> m_executionQueue;
 };
 
-// Implementation
-template <typename Atomic>
-class Scheduler : public Scheduler<void>
+template <>
+class Scheduler<uint8_t, void, void>::Task : public SingleLinkedNode<Scheduler<uint8_t, void, void>::Task>, public Subject<void>
 {
     public:
 
-    using Scheduler<void>::Delay;
-    using typename Scheduler<void>::Task;
+    /**
+    @brief Default constructor
+    @param observer Callback for task execution
+    */
+    constexpr Task(typename Subject<void>::Observer observer) : Subject<void>(observer)
+    {}
+
+    /// @brief Task execution callback
+    constexpr void execute() const
+    {
+        Subject<void>::notifyObserver();
+    }
+
+    private:
+
+    // Allow the scheduler to alter the relative delay when scheduling tasks
+    friend class Scheduler;
+
+    // Relative delay wrt previous task
+    uint8_t m_delay {0};
+};
+
+template <>
+class Scheduler<uint16_t, void, void>::Task : public SingleLinkedNode<Scheduler<uint16_t, void, void>::Task>, public Subject<void>
+{
+    public:
+
+    /**
+    @brief Default constructor
+    @param observer Callback for task execution
+    */
+    constexpr Task(typename Subject<void>::Observer observer) : Subject<void>(observer)
+    {}
+
+    /// @brief Task execution callback
+    constexpr void execute() const
+    {
+        Subject<void>::notifyObserver();
+    }
+
+    private:
+
+    // Allow the scheduler to alter the relative delay when scheduling tasks
+    friend class Scheduler;
+
+    // Relative delay wrt previous task
+    uint16_t m_delay {0};
+};
+
+
+
+// Implementation
+template <typename _Delay, typename Atomic, typename Argument>
+class Scheduler : public Scheduler<_Delay, void, Argument>
+{
+    public:
 
     /**
     @brief Schedule task, i.e. insert task into scheduler queue according to its delay
     @param task Task to be scheduled
     @param delay Execution delay of the task in clock ticks
     */
-    void schedule(Task & task, const Delay delay)
+    void schedule(typename Scheduler<_Delay, void, Argument>::Task & task, const typename Scheduler<_Delay, void, Argument>::Delay delay)
     {
         const Atomic atomic;
-        Scheduler<void>::schedule(task, delay);
+        Scheduler<_Delay, void, Argument>::schedule(task, delay);
     }
 
     /**
+    @brief Execute next task in the execution queue
+    */
+    typename Scheduler<_Delay, void, Argument>::Task * executeNextTask()
+    {
+        typename Scheduler<_Delay, void, Argument>::Task * task = getNextTask();
+        if (nullptr != task)
+        {
+            task->execute();
+        }
+        return task;
+    }
+    
+    private:
+    
+    /**
     @brief Get pointer to the first task in the execution queue (if available)
     */
-    Task * getNextTask()
+    typename Scheduler<_Delay, void, Argument>::Task * getNextTask()
     {
         const Atomic atomic;
-        return Scheduler<void>::getNextTask();
+        return Scheduler<_Delay, void, Argument>::getNextTask();
     }
 };
 

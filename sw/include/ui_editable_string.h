@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "string.h"
 #include "pgm_string.h"
+#include "param.h"
 
 #include <stdint.h>
 

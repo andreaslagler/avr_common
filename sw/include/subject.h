@@ -62,7 +62,7 @@ class Subject
     @param arg Arguments to be passed to the observer on notification
     @note This method should always be inlined, because the actual observer notification will always be an indirect call
     */
-    constexpr void notifiyObserver(const Arg ... arg) const __attribute__((always_inline))
+    constexpr void notifyObserver(const Arg ... arg) const __attribute__((always_inline))
     {
         if (nullptr != m_observer)
         {
@@ -114,7 +114,7 @@ class Subject<void>
     @brief Notify the currently registered observer.
     @note This method should always be inlined, because the actual observer notification will always be an indirect call
     */
-    constexpr void notifiyObserver() const __attribute__((always_inline))
+    constexpr void notifyObserver() const __attribute__((always_inline))
     {
         if (nullptr != m_observer)
         {

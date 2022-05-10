@@ -70,13 +70,13 @@ class LCDAlphanumericBuffered
     static constexpr void clear()
     {
         s_refresh = true;
-        uint8_t uiCChar = getNofChars();
-        char * pcFrameBuffer = s_frameBuffer[0];
+        uint8_t cntChar = getNofChars();
+        char * frameBuffer = s_frameBuffer[0];
         do
         {
-            *pcFrameBuffer++ = ' ';
+            *frameBuffer++ = ' ';
         }
-        while (--uiCChar);
+        while (--cntChar);
 
         home();
     }

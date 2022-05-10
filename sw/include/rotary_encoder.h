@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define ROTARY_ENCODER_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "Subject.h"
 
 /**
@@ -33,38 +34,26 @@ class RotaryEncoder
 {
     public:
     
-    static void init()
+    static constexpr void init()
     {
-        PhaseAPin::registerObserver([]() {if (t_polarity == PhaseBPin::read()) s_subjectCW.notifiyObserver(); else s_subjectCCW.notifiyObserver();});
+        PhaseAPin::registerObserver([]() {s_subject.notifyObserver(t_polarity == PhaseBPin::read());});
     }
 
     /**
     @brief
     */
-    static void registerObserverCW(const Subject<void>::Observer& observer)
+    static constexpr void registerObserver(const Subject<bool>::Observer& observer)
     {
-        s_subjectCW.registerObserver(observer);
-    }
-
-    /**
-    @brief
-    */
-    static void registerObserverCCW(const Subject<void>::Observer& observer)
-    {
-        s_subjectCCW.registerObserver(observer);
+        s_subject.registerObserver(observer);
     }
 
     private:
     
-    static Subject<void> s_subjectCW;
-    static Subject<void> s_subjectCCW;
+    static Subject<bool> s_subject;
 };
 
 template <typename PhaseAPin, typename PhaseBPin, bool t_polarity>
-Subject<void> RotaryEncoder<PhaseAPin, PhaseBPin, t_polarity>::s_subjectCW;
-
-template <typename PhaseAPin, typename PhaseBPin, bool t_polarity>
-Subject<void> RotaryEncoder<PhaseAPin, PhaseBPin, t_polarity>::s_subjectCCW;
+Subject<bool> RotaryEncoder<PhaseAPin, PhaseBPin, t_polarity>::s_subject;
 
 
 #endif

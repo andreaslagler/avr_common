@@ -75,7 +75,7 @@ class Potentiometer <Pin, PotentiometerDetent::NONE> : public Pin
     static void set(const uint16_t value)
     {
         s_lastValue = value;
-        s_subject.notifiyObserver(value >> 8);
+        s_subject.notifyObserver(value >> 8);
     }
     
     using Pin::read;

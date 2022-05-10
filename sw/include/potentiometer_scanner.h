@@ -41,6 +41,15 @@ class PotentiometerScannerSync
         PotentiometerScannerSyncImpl<Potentiometers ...>::finishProcessing(forceUpdate);
     }
     
+    /**
+    @brief Initialize all attached potentiometer
+    This method will force an update of all potentiometer readout values
+    */
+    static void init()
+    {
+        scanPotentiometers(true);
+    }
+    
     private:
 
     // Private implementation class implementing the interleaved/pipeline sequence of A/D conversion/readout/notification calls
