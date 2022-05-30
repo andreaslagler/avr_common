@@ -198,6 +198,56 @@ class LCDAlphanumericBuffered
     }
 
     /**
+    @brief Put formatted 2-digit number to LCD (right-aligned)
+    @param digit unsigned number (0..99) to be displayed on LCD
+    @param zeroChar Character to be used for prepending zeros (default is blank)
+    */
+    static constexpr void putNum2(uint8_t number, const char zeroChar = ' ')
+    {
+        if (number < 100)
+        {
+            // First digit (10)
+            uint8_t digit10 = 0;
+            if (number >= 10)
+            {
+                digit10 = div<10>(number);
+                putDigit(digit10);
+            }
+            else
+            {
+                putc(zeroChar);
+            }
+
+            // Second digit (1)
+            number -= 10 * digit10;
+            putDigit(number);
+        }
+        else
+        {
+            putc('-');
+            putc('-');
+            return;
+        }
+    }
+
+    /**
+    @brief Put formatted 1-digit number to LCD (right-aligned)
+    @param digit unsigned number (0..9) to be displayed on LCD
+    @param zeroChar Character to be used for prepending zeros (default is blank)
+    */
+    static constexpr void putNum1(uint8_t number)
+    {
+        if (number < 10)
+        {
+            putDigit(number);
+        }
+        else
+        {
+            putc('-');
+        }        
+    }
+
+    /**
     @brief Put formatted number to LCD (right-aligned)
     @param number signed number (-128..127) to be displayed on LCD
     */
