@@ -67,6 +67,32 @@ class SparseLUT
     }
 
     /**
+    @brief Copy table and replace some elements
+    @note This method is constexpr so it can be used to create objects at compile-time
+    @param A parameter pack of Pair<Idx, Elem> objects or their respective initializer lists representing the elements to be replaced
+    */
+    template <typename ... Arg>
+    constexpr SparseLUT<Elem, Idx, t_length> copyReplace(Arg ... arg) const
+    {
+        SparseLUT<Elem, Idx, t_length> ret = *this;
+        
+        // Dump parameter pack into a temporary array of Pair objects
+        // This works with a parameter pack consisting of actual Pair objects but also with initializer lists
+        const Entry entries[] = {arg ...};
+
+        // Overwrite elements given by arguments
+        for (const auto & entry : entries)
+        {
+            if (t_length > entry.first())
+            {
+                ret.m_data[entry.first()] = entry.second();
+            }
+        }
+        
+        return ret;
+    }
+
+    /**
     @brief Read only access to table entries for SparseLUT objects stored in RAM.
     @param idx Index of element to read
     */
