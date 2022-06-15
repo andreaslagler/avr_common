@@ -225,7 +225,6 @@ class LCDAlphanumericBuffered
         else
         {
             putc('-');
-            putc('-');
             return;
         }
     }
@@ -244,7 +243,7 @@ class LCDAlphanumericBuffered
         else
         {
             putc('-');
-        }        
+        }
     }
 
     /**
@@ -295,6 +294,120 @@ class LCDAlphanumericBuffered
         // Third digit (1)
         absolute -= 10 * digit10;
         putDigit(absolute);
+    }
+
+    /**
+    @brief Put formatted number to LCD (right-aligned)
+    @param digit unsigned number (0..65535) to be displayed on LCD
+    @param zeroChar Character to be used for prepending zeros (default is blank)
+    */
+    static constexpr void putNum(uint16_t number, const char zeroChar = ' ')
+    {
+        // First digit (10000)
+        uint8_t digit10000 = 0;
+        if (number >= 10000)
+        {
+            // digit10000 = div<10000>(number); TODO
+            digit10000 = number / 10000;
+            putDigit(digit10000);
+        }
+        else
+        {
+            putc(zeroChar);
+        }
+
+        // Second digit (1000)
+        uint8_t digit1000 = 0;
+        if (number >= 1000)
+        {
+            number -= 10000 * digit10000;
+            //digit1000 = div<1000>(number); TODO
+            digit1000 = number / 1000;
+            putDigit(digit1000);
+        }
+        else
+        {
+            putc(zeroChar);
+        }
+
+        // Third digit (100)
+        uint8_t digit100 = 0;
+        if (number >= 100)
+        {
+            number -= 1000 * digit1000;
+            //digit100 = div<100>(number);
+            digit100 = number / 100;
+            putDigit(digit100);
+        }
+        else
+        {
+            putc(zeroChar);
+        }
+
+        // Fourth digit (10)
+        uint8_t digit10 = 0;
+        if (number >= 10)
+        {
+            number -= 100 * digit100;
+            //digit10 = div<10>(number);
+            digit10 = number / 10;
+            putDigit(digit10);
+        }
+        else
+        {
+            putc(zeroChar);
+        }
+
+        // Fifth digit (1)
+        number -= 10 * digit10;
+        putDigit(number);
+    }
+
+    /**
+    @brief Put formatted number to LCD (right-aligned)
+    @param digit unsigned number (0..999) to be displayed on LCD
+    @param zeroChar Character to be used for prepending zeros (default is blank)
+    */
+    static constexpr void putNum3(uint16_t number, const char zeroChar = ' ')
+    {
+        if (number < 1000)
+        {
+            // First digit (100)
+            uint8_t digit100 = 0;
+            if (number >= 100)
+            {
+                //digit100 = div<100>(number); TODO
+                digit100 = number / 100;
+                putDigit(digit100);
+            }
+            else
+            {
+                putc(zeroChar);
+            }
+
+            // Second digit (10)
+            uint8_t digit10 = 0;
+            if (number >= 10)
+            {
+                number -= 100 * digit100;
+                //digit10 = div<10>(number); TODO
+                digit10 = number / 10;
+                putDigit(digit10);
+            }
+            else
+            {
+                putc(zeroChar);
+            }
+
+            // Third digit (1)
+            number -= 10 * digit10;
+            putDigit(number);
+        }
+        else
+        {
+            putc('-');
+            return;
+        }
     }
 
     /**
