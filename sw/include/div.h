@@ -25,7 +25,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 @result Numerator / Denominator
 */
 template <uint8_t t_denominator>
-constexpr uint8_t div(const uint8_t numerator);
+constexpr uint8_t div(const uint8_t numerator)
+{
+    return numerator / t_denominator;
+}
 
 /**
 @brief Unsigned 8 bit integer division by 1, trivial.
@@ -131,7 +134,7 @@ constexpr uint8_t mod(uint8_t & numerator)
 {
     const uint8_t remainder = numerator;
     numerator = div<t_denominator>(numerator); // Write-back result
-    return remainder - numerator;
+    return remainder - numerator * t_denominator;
 }
 
 #endif

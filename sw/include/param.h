@@ -97,6 +97,52 @@ class Param
     }
 
     /**
+    @brief Increment until max value is reached
+    @param maxValue Maximum parameter value
+    @result Reference to the parameter instance
+    */
+    constexpr Param<Value> & increase(const Value & delta, const Value & maxValue = numeric_limits<Value>::max())
+    {
+        const Value newValue = m_value + delta;
+        
+        // Check for integer overflow and check against max value
+        if (newValue < m_value || newValue > maxValue)
+        {
+            // Overflow detected or max value exceeded --> clip value to max value
+            m_value = maxValue;
+        }
+        else
+        {
+            m_value = newValue;
+        }
+        
+        return *this;
+    }
+
+    /**
+    @brief Decrement until min value is reached
+    @param minValue Minimum parameter value
+    @result Reference to the parameter instance
+    */
+    constexpr Param<Value> & decrease(const Value & delta, const Value & minValue = numeric_limits<Value>::min())
+    {
+        const Value newValue = m_value - delta;
+        
+        // Check for integer overflow and check against min value
+        if (newValue > m_value || newValue < minValue)
+        {
+            // Overflow detected or min value not exceeded --> clip value to min value
+            m_value = minValue;
+        }
+        else
+        {
+            m_value = newValue;
+        }
+        
+        return *this;
+    }
+
+    /**
     @brief Increment until max value is reached, then roll over to min value
     @param minValue Minimum parameter value
     @param maxValue Maximum parameter value

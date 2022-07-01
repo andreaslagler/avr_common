@@ -365,7 +365,7 @@ class LCDAlphanumericBuffered
 
     /**
     @brief Put formatted number to LCD (right-aligned)
-    @param digit unsigned number (0..999) to be displayed on LCD
+    @param digit unsigned number (0..255) to be displayed on LCD
     @param zeroChar Character to be used for prepending zeros (default is blank)
     */
     static constexpr void putNum3(uint16_t number, const char zeroChar = ' ')
