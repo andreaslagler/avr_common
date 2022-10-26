@@ -21,9 +21,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 /**
 @brief Generic driver for an interrupt multiplexer
 @tparam Device Actual multiplexer device driver class implementing static methods getNofLines() and getLine()
-@tparam PinConfig
+@tparam t_usedPinIdx Zero-based indices of the used pins on the multiplexer device
 */
-template <typename Device, uint8_t ... PinConfig>
+template <typename Device, uint8_t ... t_usedPinIdx>
 class InterruptMux
 {
     // Struct retrieving the pin usage from the pin configuration for a given pin index
@@ -71,7 +71,7 @@ class InterruptMux
     public:
     
     // Pin driver base class
-    template <uint8_t t_pinIdx, bool t_pinUsed = PinUsed<t_pinIdx, PinConfig ...>::get()>
+    template <uint8_t t_pinIdx, bool t_pinUsed = PinUsed<t_pinIdx, t_usedPinIdx ...>::get()>
     class Pin
     {};
 
@@ -79,8 +79,10 @@ class InterruptMux
     template <uint8_t t_pinIdx>
     class Pin<t_pinIdx, false>
     {
+        private:
+        
         // Parent interrupt multiplexer driver is allowed to notify pin observers
-        friend class InterruptMux<Device, PinConfig ...>;
+        friend class InterruptMux<Device, t_usedPinIdx ...>;
 
         // Dummy observer notification method
         static void notifyObserver(const uint8_t pinIdx)
@@ -96,8 +98,10 @@ class InterruptMux
     template <uint8_t t_pinIdx>
     class Pin <t_pinIdx, true>
     {
+        private:
+        
         // Parent interrupt multiplexer driver is allowed to notify pin observers
-        friend class InterruptMux<Device, PinConfig ...>;
+        friend class InterruptMux<Device, t_usedPinIdx ...>;
 
         // Subject for observer registration
         static Subject<void> s_subject;
@@ -121,16 +125,25 @@ class InterruptMux
         
         public:
         
+        /**
+        @brief Enable interrupt for this pin
+        */
         static constexpr void enableInterrupt()
         {
             s_interruptEnabled = true;
         }
         
+        /**
+        @brief Disable interrupt for this pin
+        */
         static constexpr void disableInterrupt()
         {
             s_interruptEnabled = false;
         }
         
+        /**
+        @brief Register observer for this pin
+        */
         static constexpr void registerObserver(const Subject<void>::Observer& observer)
         {
             s_subject.registerObserver(observer);
@@ -148,13 +161,13 @@ class InterruptMux
 };
 
 // Static initialization
-template <typename Device, uint8_t ... PinConfig>
+template <typename Device, uint8_t ... t_usedPinIdx>
 template <uint8_t t_pinIdx>
-Subject<void> InterruptMux<Device, PinConfig ...>::Pin<t_pinIdx, true>::s_subject;
+Subject<void> InterruptMux<Device, t_usedPinIdx ...>::Pin<t_pinIdx, true>::s_subject;
 
-template <typename Device, uint8_t ... PinConfig>
+template <typename Device, uint8_t ... t_usedPinIdx>
 template <uint8_t t_pinIdx>
-bool InterruptMux<Device, PinConfig ...>::Pin<t_pinIdx, true>::s_interruptEnabled = false;
+bool InterruptMux<Device, t_usedPinIdx ...>::Pin<t_pinIdx, true>::s_interruptEnabled = false;
 
 /**
 @brief Driver for an individual pin of an interrupt multiplexer device
