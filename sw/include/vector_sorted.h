@@ -21,6 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "Vector.h"
 #include <stdbool.h>
 
+
 enum class SortOrder
 {
     ASCENDING,
@@ -35,6 +36,10 @@ enum class SortOrder
 template <typename T, SortOrder t_sortOrder>
 struct Comparison;
 
+/**
+@brief Helper class for greater/less than comparison, specialization for ascending sort order
+@tparam T Working type
+*/
 template <typename T>
 struct Comparison<T, SortOrder::ASCENDING>
 {
@@ -44,6 +49,10 @@ struct Comparison<T, SortOrder::ASCENDING>
     }
 };
 
+/**
+@brief Helper class for greater/less than comparison, specialization for descending sort order
+@tparam T Working type
+*/
 template <typename T>
 struct Comparison<T, SortOrder::DESCENDING>
 {
