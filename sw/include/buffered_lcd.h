@@ -21,6 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include "div.h"
 #include "string.h"
+#include "pgm_string.h"
 
 /**
 @brief Driver for buffered operation of an alphanumeric LCD.
@@ -88,7 +89,7 @@ class LCDAlphanumericBuffered
     {
         setCursor(0, 0);
     }
-    
+       
     /**
     @brief Set cursor to rowIdx (0..nofColumns-1) / columnIdx (0..nofRows-1) position
     @param rowIdx Row index
@@ -116,7 +117,7 @@ class LCDAlphanumericBuffered
     @brief Put terminated string to LCD
     @param string Zero-terminated string to displayed on LCD (stored in RAM)
     */
-    static constexpr void puts(const char * string)
+    static constexpr void put(const char * string)
     {
         while (*string != '\0')
         {
@@ -129,7 +130,19 @@ class LCDAlphanumericBuffered
     @param string Zero-terminated string to displayed on LCD (stored in RAM)
     */
     template <uint8_t t_size>
-    static constexpr void puts(const String<t_size>& string)
+    static constexpr void put(const String<t_size>& string)
+    {
+        for (const auto& character : string)
+        {
+            putc(character);
+        }
+    }
+
+    /**
+    @brief Put terminated string to LCD
+    @param string Zero-terminated string to displayed on LCD (stored in PROG_MEM)
+    */
+    static constexpr void put(const PgmString& string)
     {
         for (const auto& character : string)
         {
@@ -165,7 +178,7 @@ class LCDAlphanumericBuffered
     @param digit unsigned number (0..255) to be displayed on LCD
     @param zeroChar Character to be used for prepending zeros (default is blank)
     */
-    static constexpr void putNum(uint8_t number, const char zeroChar = ' ')
+    static constexpr void put(uint8_t number, const char zeroChar = ' ')
     {
         // First digit (100)
         uint8_t digit100 = 0;
@@ -430,9 +443,20 @@ class LCDAlphanumericBuffered
             }
         }
     }
+    
+    static constexpr void newLine()
+    {
+        const uint8_t rowIdx = getRow() + 1;
+        setCursor((rowIdx < getNofRows()) ? rowIdx : getNofRows(), 0);
+    }        
 
     private:
 
+    static constexpr uint8_t getRow()
+    {
+        return div<getNofColumns()>(s_cursor);
+    }
+    
     static constexpr uint8_t getNofChars()
     {
         return getNofRows() * getNofColumns();
