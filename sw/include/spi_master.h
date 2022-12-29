@@ -23,15 +23,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 /**
 @brief Implementation of driver for SPI master using a given SPI module driver
 @tparam SPIModule SPI module driver
+@tparam SSPin Slave Select Pin driver
 @note Data is transferred synchronously, i.e. driver is actively waiting for SPI transfer to complete
 */
-template<typename SPIModule>
+template<typename SPIModule, typename _SS_Pin = typename SPIModule::SS_Pin>
 class SPIMasterSync
 {
     public:
     
-    /// Slave Select Pin
-    typedef typename SPIModule::SS_Pin SS_Pin;
+    /// Slave Select Pin driver
+    typedef _SS_Pin SS_Pin;
 
     /**
     @brief Initialization of the SPI module in master mode
