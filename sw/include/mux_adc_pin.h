@@ -15,36 +15,41 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef MUX_ANALOG_PIN_H
-#define MUX_ANALOG_PIN_H
+#ifndef MUX_ADC_PIN_H
+#define MUX_ADC_PIN_H
 
 #include <stdint.h>
 
 /**
-@brief Driver class for a multiplexed analog input pin
-@tparam MuxDevice Multiplexer device driver class implementing a static selectChannel() method
-@tparam Pin Analog input pin driver class implementing static methods startConversion(), wait() and a static template method read<Result>()
-@tparam t_channel Multiplexer channel
+@brief Driver class for a multiplexed ADC pin
+@tparam MuxDevice Multiplexer device driver class implementing static methods getNofChannels() and selectChannel() 
+@tparam ADCPin ADC pin driver class implementing static methods startConversion(), wait() and a static template method read<Result>()
+@tparam t_channel Zero-based channel index on multiplexer device
 */
-template <typename Pin, typename MuxDevice, uint8_t t_channel>
-class MuxAnalogPin : public Pin
+template <typename ADCPin, typename MuxDevice, uint8_t t_channel>
+class MuxADCPin : public ADCPin
 {
+    typedef ADCPin __super;
+    
     public:
 
     /**
     @brief Start AD conversion on the selected multiplexer channel
     */
-    static void startConversion() __attribute__((always_inline))
+    static void startConversion()
     {
-        // t_channel is a compile-time constant, so a static assert is used instead of a runtime check inside MuxDevice::selectChannel(t_channel) 
+        // Validity check
         static_assert(t_channel < MuxDevice::getNofChannels(), "Invalid multiplexer channel: Selected channel index >= number of channels");
         
+        // Select channel on multiplexer device
         MuxDevice::selectChannel(t_channel);
-        Pin::startConversion();
+        
+        // Start A/D conversion on multiplexed ADC pin
+        __super::startConversion();
     }
     
-    using Pin::read;
-    using Pin::wait;
+    using __super::readResult;
+    using __super::wait;
 };
 
 #endif

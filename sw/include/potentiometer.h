@@ -20,7 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <stdlib.h> // abs()
 #include <stdint.h>
-#include "Subject.h"
+#include <functional>
 
 enum class PotentiometerDetent : uint8_t
 {
@@ -34,102 +34,164 @@ enum class PotentiometerDetent : uint8_t
 };
 
 /**
-@brief Driver class for a Potentiometer connected to an analog input pin
-@tparam Pin Analog input pin driver class implementing static methods startConversion(), wait() and a static template method read<Result>()
+@brief Driver class for a Potentiometer
+@tparam t_detent Detent type of potentiometer
 */
-template <typename Pin, PotentiometerDetent t_detent = PotentiometerDetent::NONE>
-class Potentiometer;
+template <PotentiometerDetent t_detent>
+class PotentiometerBase;
 
-
-template <typename Pin>
-class Potentiometer <Pin, PotentiometerDetent::NONE> : public Pin
+/**
+@brief Driver class for a Potentiometer connected to an ADC input pin
+@tparam ADCPin Analog input pin driver class implementing static methods startConversion(), wait() and a static template method readResult<Result>()
+@tparam t_detent Detent type of potentiometer. Default is no detent
+*/
+template <typename ADCPin, PotentiometerDetent t_detent = PotentiometerDetent::NONE>
+class Potentiometer : public PotentiometerBase<t_detent>
 {
+    typedef PotentiometerBase<t_detent> __super;
+    
     public:
     
     /**
-    @brief Register an observer for potentiometer value changed event
-    @param observer Any observer callback accepting an uint8_t parameter to be notified on potentiometer value change
+    @brief Alias for the connected ADC pin
     */
-    static void registerObserver(const typename Subject<uint8_t>::Observer & observer)
+    typedef ADCPin Pin;
+    
+    /**
+    @brief Register a callback to be invoked when potentiometer value has changed
+    @param callback Any callback accepting an uint8_t parameter to be notified on potentiometer value change
+    */
+    template <typename Callback>
+    static void registerCallback(Callback&& callback)
     {
-        s_subject.registerObserver(observer);
+        s_callback = callback;
     }
     
     /**
-    @brief Check current potentiometer value and notify observer if value has changed
-    @param value Potentiometer value to check
+    @brief Asynchronous update of potentiometer value
+    This method will read the  A/D conversion result assuming the A/D conversion on the associated ADC pin is completed (hence "asynchronous") and invoke the registered callback only if the potentiometer value is changed
     */
-    static void check(const uint16_t value)
-    {        
-        // Values are considered identical if difference is less than half of the 8-Bit LSB
-        if (abs(value - s_lastValue) > 128)
+    static constexpr void updateAsync()
+    {
+        // Read ADC value
+        const uint16_t adcValue = ADCPin:: template readResult<uint16_t>();
+        
+        // Do not update to the same pot value
+        const uint8_t potValue = __super::convertAdcToPotValue(adcValue);
+        if (potValue != __super::convertAdcToPotValue(s_lastAdcValue))
         {
-            set(value);
+            // Add some hysteresis (half of the 8-Bit LSB)
+            if (abs(adcValue - s_lastAdcValue) > 128)
+            {
+                s_lastAdcValue = adcValue;
+                s_callback(potValue);
+            }
         }
     }
     
     /**
-    @brief Check current potentiometer value and notify observer if value has changed
-    @param value Potentiometer value to check
+    @brief Asynchronous update of potentiometer value
+    This method will read the  A/D conversion result assuming the A/D conversion on the associated ADC pin is completed (hence "asynchronous") and invoke the registered callback
     */
-    static void set(const uint16_t value)
+    static constexpr void forceUpdateAsync()
     {
-        s_lastValue = value;
-        s_subject.notifyObserver(value >> 8);
+        // Read ADC value
+        const uint16_t adcValue = ADCPin:: template readResult<uint16_t>();
+
+        // Force update of the ADC value
+        s_lastAdcValue = adcValue;
+        
+        // Force invocation of callback
+        const uint8_t potValue = __super::convertAdcToPotValue(adcValue);
+        s_callback(potValue);
     }
     
-    using Pin::read;
-    using Pin::wait;
-    using Pin::startConversion;
+    /**
+    @brief Synchronous update of potentiometer value
+    This method will start an A/D conversion on the associated ADC pin, wait actively until the A/D conversion result is available, read the A/D conversion result (hence "synchronous") and invoke the registered callback only if the potentiometer value is changed
+    */
+    static void updateSync()
+    {
+        ADCPin::startConversion();
+        ADCPin::wait();
+        updateAsync();
+    }
 
-    protected:
-    
-    // Subject for notification on potentiometer value change
-    static Subject<uint8_t> s_subject;
-    
-    static uint16_t s_lastValue;
+    /**
+    @brief Synchronous update of potentiometer value
+    This method will start an A/D conversion on the associated ADC pin, wait actively until the A/D conversion result is available, read the A/D conversion result (hence "synchronous") and invoke the registered callback
+    */
+    static void forceUpdateSync()
+    {
+        ADCPin::startConversion();
+        ADCPin::wait();
+        forceUpdateAsync();
+    }
+
+    private:
+
+    // Callback for potentiometer value change
+    static std::function<void(uint8_t)> s_callback;
+
+    static uint16_t s_lastAdcValue;
 };
 
 // Static initialization
-template <typename Pin>
-Subject<uint8_t> Potentiometer<Pin, PotentiometerDetent::NONE>::s_subject;
+template <typename ADCPin, PotentiometerDetent t_detent>
+std::function<void(uint8_t)> Potentiometer<ADCPin, t_detent>::s_callback;
 
-template <typename Pin>
-uint16_t Potentiometer<Pin, PotentiometerDetent::NONE>::s_lastValue = 0;
+template <typename ADCPin, PotentiometerDetent t_detent>
+uint16_t Potentiometer<ADCPin, t_detent>::s_lastAdcValue = 0;
 
-static uint8_t calc_potvalue(const uint16_t adc_value)
+/**
+@brief Driver class for a potentiometer without detent (base class)
+*/
+template <>
+class PotentiometerBase<PotentiometerDetent::NONE>
 {
-    const uint8_t adc_value_MSB = static_cast<uint8_t>(adc_value >> 8);
+    protected:
     
-    if (adc_value_MSB <= 120)
+    // Conversion of 16bit ADC readout to 8bit potentiometer value
+    // This method is implemented in the base class to avoid template code bloat
+    static constexpr uint8_t convertAdcToPotValue(const uint16_t adcValue)
     {
-        return (adc_value + (adc_value >> 4)) >> 8;
-    }
-    
-    if (adc_value_MSB >= 136)
-    {
-        return (adc_value - 4096 + (adc_value >> 4)) >> 8;
-    }
-
-    // Default is center position
-    return 128;
-}
-
-
-template <typename Pin>
-class Potentiometer <Pin, PotentiometerDetent::CENTER> : public Potentiometer<Pin>
-{
-    public:
-    
-    /**
-    @brief Check current potentiometer value and notify observer if value has changed
-    @param value Potentiometer value to check
-    */
-    static void set(const uint16_t value)
-    {
-        Potentiometer<Pin>::s_lastValue = value;
-        Potentiometer<Pin>::s_subject.notifiyObserver(calc_potvalue(value));
+        // No detent --> return MSB of ADC value
+        return static_cast<uint8_t>(adcValue >> 8);
     }
 };
+
+/**
+@brief Driver class for a potentiometer with center detent (base class)
+*/
+template <>
+class PotentiometerBase<PotentiometerDetent::CENTER>
+{
+    protected:
+    
+    // Conversion of 16bit ADC readout to 8bit potentiometer value
+    // This method is implemented in the base class to avoid template code bloat
+    static constexpr uint8_t convertAdcToPotValue(const uint16_t adcValue)
+    {
+        // Center detent --> check raw pot value given by MSB of ADC value
+        const uint8_t potValue = static_cast<uint8_t>(adcValue >> 8);
+        
+        // Check if raw pot value is inside the guard band 128 +/- 8
+        if (potValue <= 120)
+        {
+            // Pot value is below guard band --> return compressed value
+            return (adcValue + (adcValue >> 4)) >> 8;
+        }
+        
+        if (potValue >= 136)
+        {
+            // Pot value is above guard band --> return compressed value
+            return (adcValue - 4096 + (adcValue >> 4)) >> 8;
+        }
+
+        // Value is inside guard band --> return center position
+        return 128;
+    }
+};
+
 
 #endif
