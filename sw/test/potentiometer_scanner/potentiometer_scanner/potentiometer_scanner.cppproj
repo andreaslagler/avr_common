@@ -187,8 +187,6 @@
       <Value>..</Value>
       <Value>%24(PackRepoDir)\atmel\ATmega_DFP\1.2.209\include</Value>
       <Value>../../../../include</Value>
-      <Value>../../../../../../hal_avr_m1284p/sw/include</Value>
-      <Value>../../../../../../avr_devices/sw/include</Value>
     </ListValues>
   </avrgcccpp.compiler.directories.IncludePaths>
   <avrgcccpp.compiler.optimization.PackStructureMembers>True</avrgcccpp.compiler.optimization.PackStructureMembers>
