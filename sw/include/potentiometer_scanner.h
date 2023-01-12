@@ -18,12 +18,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef POTENTIOMETER_SCANNER_H
 #define POTENTIOMETER_SCANNER_H
 
-#include <stdint.h>
-#include <stdbool.h>
-
 /**
 @brief Potentiometer scanner class scanning one or more potentiometers
-Since the actual potentiometer scanning is done synchronously (i.e. actively waiting for AD conversion result), the idle time during potentiometer value retrieval is used to process the observer notification on value change of a different potentiometer
+The actual potentiometer scanning is done synchronously (i.e. actively waiting for AD conversion result)
 @tparam Potentiometers Pack of potentiometer driver classes implementing static methods startConversion(), wait(), template<>read() and check(uint16_t). See potentiometer.h
 */
 template <typename ... Potentiometers>
@@ -35,60 +32,38 @@ class PotentiometerScannerSync
     @brief Scan all attached potentiometers
     This method will start A/D conversion and notify any registered observer on a value change for every attached potentiometer
     */
-    static void scanPotentiometers(const bool forceUpdate = false)
+    static constexpr void scanPotentiometers()
     {
-        PotentiometerScannerSyncImpl<Potentiometers ...>::startProcessing();
-        PotentiometerScannerSyncImpl<Potentiometers ...>::finishProcessing(forceUpdate);
+        PotentiometerScannerSyncImpl<Potentiometers ...>::update();
     }
     
     /**
     @brief Initialize all attached potentiometer
     This method will force an update of all potentiometer readout values
     */
-    static void init()
+    static constexpr void init()
     {
-        scanPotentiometers(true);
+        PotentiometerScannerSyncImpl<Potentiometers ...>::forceUpdate();
     }
     
     private:
 
-    // Private implementation class implementing the interleaved/pipeline sequence of A/D conversion/readout/notification calls
+    // Private implementation class
     template <typename CurrentPot, typename ... NextPot>
     class PotentiometerScannerSyncImpl
     {
         public:
         
-        // This method will be the entry point for any number of potentiometers attached
-        static void startProcessing() __attribute__((always_inline))
+        static constexpr void update() __attribute__((always_inline))
         {
-            // Start AD conversion for current potentiometer
-            CurrentPot::startConversion();
+            CurrentPot::updateSync();
+            PotentiometerScannerSyncImpl<NextPot ...>::update();
         }
         
-        // This method is called to finish the processing. The actual interleaving and potentiometer iteration logic is implemented here
-        static void finishProcessing(const bool forceUpdate) __attribute__((always_inline))
+        static constexpr void forceUpdate() __attribute__((always_inline))
         {
-            // Wait for AD conversion for current potentiometer
-            CurrentPot::wait();
-            
-            // Read pot value
-            const uint16_t value = CurrentPot::template read<uint16_t>();
-            
-            // Start processing of the next potentiometer before triggering the notification on potentiometer value change
-            PotentiometerScannerSyncImpl<NextPot ...>::startProcessing();
-            
-            // Notify any registered observer
-            if (forceUpdate)
-            {
-                CurrentPot::set(value);                
-            }
-            else
-            {
-                CurrentPot::check(value);                
-            }
-            
-            // Iterate to next potentiometer
-            PotentiometerScannerSyncImpl<NextPot ...>::finishProcessing(forceUpdate);
+            CurrentPot::forceUpdateSync();
+            PotentiometerScannerSyncImpl<NextPot ...>::forceUpdate();
         }
     };
 
@@ -98,32 +73,123 @@ class PotentiometerScannerSync
     {
         public:
         
-        // This method will be the entry point for any number of potentiometers attached
-        static void startProcessing() __attribute__((always_inline))
+        // This method is called to finish the processing. The actual interleaving and potentiometer iteration logic is implemented here
+        static constexpr void update() __attribute__((always_inline))
         {
-            // Start A/D conversion for current potentiometer
-            CurrentPot::startConversion();
+            CurrentPot::updateSync();
         }
-
-        // This method is called to finish the processing. The potentiometer iteration loop is terminated here
-        static void finishProcessing(const bool forceUpdate) __attribute__((always_inline))
+        
+        static constexpr void forceUpdate() __attribute__((always_inline))
         {
-            // Wait for A/D conversion for last potentiometer
-            CurrentPot::wait();
-            
-            // Read the value and notify any registered observer
-            const uint16_t value = CurrentPot::template read<uint16_t>();
-            if (forceUpdate)
-            {
-                CurrentPot::set(value);
-            }
-            else
-            {
-                CurrentPot::check(value);
-            }
-
+            CurrentPot::forceUpdateSync();
         }
     };
 };
+
+
+#include <functional>
+
+/**
+@brief Potentiometer scanner class scanning one or more potentiometers
+The actual potentiometer scanning is done synchronously (i.e. actively waiting for AD conversion result)
+@tparam Potentiometers Pack of potentiometer driver classes implementing static methods startConversion(), wait(), template<>read() and check(uint16_t). See potentiometer.h
+*/
+template <typename ... Potentiometers>
+class PotentiometerScannerAsync
+{
+    public:
+    
+    /**
+    @brief Initialize all attached potentiometers
+    This method will force an update of all potentiometer readout values
+    */
+    static constexpr void init()
+    {
+        PotentiometerScannerSync<Potentiometers ...>::init();
+    }
+    
+    /**
+    @brief Scan all attached potentiometers
+    This method will start A/D conversion and notify any registered observer on a value change for every attached potentiometer
+    */
+    static constexpr void startOnce()
+    {
+        s_continue = false;
+        PotentiometerScannerAsyncImpl<Potentiometers ...>::start();
+    }
+    
+    /**
+    @brief Scan all attached potentiometers
+    This method will start A/D conversion and notify any registered observer on a value change for every attached potentiometer
+    */
+    static constexpr void startContinuous()
+    {
+        s_continue = true;
+        PotentiometerScannerAsyncImpl<Potentiometers ...>::start();
+    }
+    
+    /**
+    @brief Scan all attached potentiometers
+    This method will start A/D conversion and notify any registered observer on a value change for every attached potentiometer
+    */
+    static constexpr void stop()
+    {
+        s_continue = false;
+    }
+    
+    static constexpr void onADCInterrupt()
+    {
+        s_callback();
+    }
+    
+    private:
+    
+    // Callback for ADC interrupt
+    static std::function<void()> s_callback;
+    
+    // Flag indicating continuous operation of potentiometer scanner
+    static bool s_continue;
+
+    // Private implementation class
+    template <typename CurrentPot, typename ... NextPot>
+    class PotentiometerScannerAsyncImpl
+    {
+        public:
+        
+        static constexpr void start()
+        {
+            s_callback = [] {CurrentPot::updateAsync(); PotentiometerScannerAsyncImpl<NextPot...>::start();};
+            CurrentPot::Pin::startConversion();
+        }
+    };
+
+    // Last potentiometer
+    template <typename CurrentPot>
+    class PotentiometerScannerAsyncImpl<CurrentPot>
+    {
+        public:
+        
+        static constexpr void start()
+        {
+            if (s_continue)
+            {
+                s_callback = [] {CurrentPot::updateAsync(); PotentiometerScannerAsyncImpl<Potentiometers...>::start();};
+            }
+            else
+            {
+                s_callback = [] {CurrentPot::updateAsync();};
+            }
+            
+            CurrentPot::Pin::startConversion();
+        }
+    };
+};
+
+template <typename ... Potentiometers>
+std::function<void()> PotentiometerScannerAsync<Potentiometers...>::s_callback;
+
+template <typename ... Potentiometers>
+bool PotentiometerScannerAsync<Potentiometers...>::s_continue = false;
+
 
 #endif /* POTSCANNER_H_ */
