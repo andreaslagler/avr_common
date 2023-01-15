@@ -95,7 +95,7 @@ class RingBuffer
     // Ring buffer size 1/2/4/8/16/32/64/128 elements
     static constexpr uint8_t getBufferSize()
     {
-        return _BV(t_lengthPower2);
+        return (1 << t_lengthPower2);
     }
 
     // Bit mask to utilize 2^N overflow when incrementing read and write positions
