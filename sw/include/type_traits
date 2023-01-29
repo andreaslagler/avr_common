@@ -24,21 +24,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <stdbool.h>
 
-
-
-namespace std
-{
-    using size_t = ::size_t;
-}    
-
-
-
-
-
-
-
-
-
 //Here is a list of type traits intrinsics used by GCC as of version 4.7:
 //__is_pod
 //__is_trivial
@@ -61,8 +46,6 @@ namespace std
 //__has_virtual_destructor
 
 
-namespace std
-{
     // helper class
     template <class T, T v>
     struct integral_constant {
@@ -648,6 +631,30 @@ template<class Ret, class... Args> struct is_function<Ret(Args......) const vola
     
     // constant evaluation context
     constexpr bool is_constant_evaluated() noexcept;
-} // namespace std 
+
+	// Cast a size_t value to the smallest possible integer type that can represent the value
+	template <size_t t_number, bool t_isUint16 = t_number < 65536, bool t_isUint8 = t_number < 256>
+	struct DownCast;
+
+	template <size_t t_number>
+	struct DownCast<t_number, false, false>
+	{
+		typedef size_t type;
+		static constexpr size_t value = static_cast<size_t>(t_number);
+	};
+
+	template <size_t t_number>
+	struct DownCast<t_number, true, false>
+	{
+		typedef uint16_t type;
+		static constexpr type value = static_cast<type>(t_number);
+	};
+
+	template <size_t t_number>
+	struct DownCast<t_number, true, true>
+	{
+		typedef uint8_t type;
+		static constexpr type value = static_cast<type>(t_number);
+	};
 
 #endif
