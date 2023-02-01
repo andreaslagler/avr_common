@@ -23,7 +23,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 @brief Out of range exception
 The definition of this function is application specific
 */
-[[noreturn]] constexpr void throw_out_of_range();
+[[noreturn]] void throw_out_of_range();
+
+/**
+@brief Bad alloc exception
+The definition of this function is application specific
+*/
+[[noreturn]] void throw_bad_alloc();
 
 
 #endif
