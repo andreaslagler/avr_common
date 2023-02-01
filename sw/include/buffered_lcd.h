@@ -71,13 +71,10 @@ class LCDAlphanumericBuffered
     static constexpr void clear()
     {
         s_refresh = true;
-        uint8_t cntChar = getNofChars();
-        char * frameBuffer = s_frameBuffer[0];
-        do
+        for (char & c : s_frameBuffer.buffer)
         {
-            *frameBuffer++ = ' ';
+            c = ' ';
         }
-        while (--cntChar);
 
         home();
     }
@@ -109,7 +106,7 @@ class LCDAlphanumericBuffered
         if (s_cursor < getNofChars())
         {
             s_refresh = true;
-            *(s_frameBuffer[0] + (s_cursor++)) = character;
+            s_frameBuffer.buffer[s_cursor++] = character;
         }
     }
 
@@ -119,7 +116,7 @@ class LCDAlphanumericBuffered
     */
     static constexpr void put(const char * string)
     {
-        while (*string != '\0')
+        while (*string != 0)
         {
             putc(*string++);
         }
@@ -134,7 +131,10 @@ class LCDAlphanumericBuffered
     {
         for (const auto& character : string)
         {
-            putc(character);
+            if (character != 0)
+            {
+                putc(character);
+            }            
         }
     }
 
@@ -146,7 +146,10 @@ class LCDAlphanumericBuffered
     {
         for (const auto& character : string)
         {
-            putc(character);
+            if (character != 0)
+            {
+                putc(character);
+            }            
         }
     }
 
@@ -170,43 +173,44 @@ class LCDAlphanumericBuffered
     */
     static constexpr void putDigit(const uint8_t digit)
     {
-        putc(digit + 0x30);
+        putc(convertDigitToChar(digit));
     }
+    
+    static constexpr char convertDigitToChar(const uint8_t digit)
+    {
+        return static_cast<char>(digit + 0x30);
+    }
+    
 
     /**
     @brief Put formatted number to LCD (right-aligned)
     @param digit unsigned number (0..255) to be displayed on LCD
     @param zeroChar Character to be used for prepending zeros (default is blank)
     */
-    static constexpr void put(uint8_t number, const char zeroChar = ' ')
+    static constexpr void putNum(uint8_t number, const char zeroChar = ' ')
     {
+        char digitChar = zeroChar;
+        uint8_t digit = 0;
+        
         // First digit (100)
-        uint8_t digit100 = 0;
         if (number >= 100)
         {
-            digit100 = div<100>(number);
-            putDigit(digit100);
+            digit = div<100>(number);
+            digitChar = convertDigitToChar(digit);
         }
-        else
-        {
-            putc(zeroChar);
-        }
+        putc(digitChar);
 
         // Second digit (10)
-        uint8_t digit10 = 0;
         if (number >= 10)
         {
-            number -= 100 * digit100;
-            digit10 = div<10>(number);
-            putDigit(digit10);
+            number -= 100 * digit;
+            digit = div<10>(number);
+            digitChar = convertDigitToChar(digit);
         }
-        else
-        {
-            putc(zeroChar);
-        }
+        putc(digitChar);
 
         // Third digit (1)
-        number -= 10 * digit10;
+        number -= 10 * digit;
         putDigit(number);
     }
 
@@ -219,24 +223,24 @@ class LCDAlphanumericBuffered
     {
         if (number < 100)
         {
+            char digitChar = zeroChar;
+            uint8_t digit = 0;
+
             // First digit (10)
-            uint8_t digit10 = 0;
             if (number >= 10)
             {
-                digit10 = div<10>(number);
-                putDigit(digit10);
+                digit = div<10>(number);
+                digitChar = convertDigitToChar(digit);
             }
-            else
-            {
-                putc(zeroChar);
-            }
+            putc(digitChar);
 
             // Second digit (1)
-            number -= 10 * digit10;
+            number -= 10 * digit;
             putDigit(number);
         }
         else
         {
+            putc('-');
             putc('-');
             return;
         }
@@ -249,14 +253,8 @@ class LCDAlphanumericBuffered
     */
     static constexpr void putNum1(uint8_t number)
     {
-        if (number < 10)
-        {
-            putDigit(number);
-        }
-        else
-        {
-            putc('-');
-        }
+        const char digitChar = (number < 10) ? convertDigitToChar(number) : '-';
+        putc(digitChar);
     }
 
     /**
@@ -268,44 +266,47 @@ class LCDAlphanumericBuffered
         const bool negative = number < 0;
         uint8_t absolute = negative ? -number : number;
 
+        char digitChar = ' ';
         if (negative && (absolute >= 100))
-        putc('-');
-        else
-        putc(' ');
+        {
+            digitChar = '-';
+        }
+        putc(digitChar);
 
         // First digit (100)
-        uint8_t digit100 = 0;
+        uint8_t digit = 0;
         if (absolute >= 100)
         {
-            digit100 = div<100>(absolute);
-            putDigit(digit100);
+            digit = div<100>(absolute);
+            digitChar = convertDigitToChar(digit);
         }
         else
         {
             if (negative && (absolute >= 10))
-            putc('-');
-            else
-            putc(' ');
+            {
+                digitChar = '-';
+            }
         }
+        putc(digitChar);
 
         // Second digit (10)
-        uint8_t digit10 = 0;
         if (absolute >= 10)
         {
-            absolute -= 100 * digit100;
-            digit10 = div<10>(absolute);
-            putDigit(digit10);
+            absolute -= 100 * digit;
+            digit = div<10>(absolute);
+            digitChar = convertDigitToChar(digit);
         }
         else
         {
             if (negative)
-            putc('-');
-            else
-            putc(' ');
+            {
+                digitChar = '-';
+            }
         }
+        putc(digitChar);
 
         // Third digit (1)
-        absolute -= 10 * digit10;
+        absolute -= 10 * digit;
         putDigit(absolute);
     }
 
@@ -316,63 +317,50 @@ class LCDAlphanumericBuffered
     */
     static constexpr void putNum(uint16_t number, const char zeroChar = ' ')
     {
+        char digitChar = zeroChar;
+        uint8_t digit = 0;
+
         // First digit (10000)
-        uint8_t digit10000 = 0;
         if (number >= 10000)
         {
-            // digit10000 = div<10000>(number); TODO
-            digit10000 = number / 10000;
-            putDigit(digit10000);
+            // digit = div<10000>(number); TODO
+            digit = number / 10000;
+            digitChar = convertDigitToChar(digit);
         }
-        else
-        {
-            putc(zeroChar);
-        }
+        putc(digitChar);
 
         // Second digit (1000)
-        uint8_t digit1000 = 0;
         if (number >= 1000)
         {
-            number -= 10000 * digit10000;
-            //digit1000 = div<1000>(number); TODO
-            digit1000 = number / 1000;
-            putDigit(digit1000);
+            number -= 10000 * digit;
+            //digit = div<1000>(number); TODO
+            digit = number / 1000;
+            digitChar = convertDigitToChar(digit);
         }
-        else
-        {
-            putc(zeroChar);
-        }
+        putc(digitChar);
 
         // Third digit (100)
-        uint8_t digit100 = 0;
         if (number >= 100)
         {
-            number -= 1000 * digit1000;
-            //digit100 = div<100>(number);
-            digit100 = number / 100;
-            putDigit(digit100);
+            number -= 1000 * digit;
+            //digit = div<100>(number);
+            digit = number / 100;
+            digitChar = convertDigitToChar(digit);
         }
-        else
-        {
-            putc(zeroChar);
-        }
+        putc(digitChar);
 
         // Fourth digit (10)
-        uint8_t digit10 = 0;
         if (number >= 10)
         {
-            number -= 100 * digit100;
-            //digit10 = div<10>(number);
-            digit10 = number / 10;
-            putDigit(digit10);
+            number -= 100 * digit;
+            //digit = div<10>(number);
+            digit = number / 10;
+            digitChar = convertDigitToChar(digit);
         }
-        else
-        {
-            putc(zeroChar);
-        }
+        putc(digitChar);
 
         // Fifth digit (1)
-        number -= 10 * digit10;
+        number -= 10 * digit;
         putDigit(number);
     }
 
@@ -383,41 +371,38 @@ class LCDAlphanumericBuffered
     */
     static constexpr void putNum3(uint16_t number, const char zeroChar = ' ')
     {
+        char digitChar = zeroChar;
+        uint8_t digit = 0;
+
         if (number < 1000)
         {
             // First digit (100)
-            uint8_t digit100 = 0;
             if (number >= 100)
             {
-                //digit100 = div<100>(number); TODO
-                digit100 = number / 100;
-                putDigit(digit100);
+                //digit = div<100>(number); TODO
+                digit = number / 100;
+                digitChar = convertDigitToChar(digit);
             }
-            else
-            {
-                putc(zeroChar);
-            }
+            putc(digitChar);
 
             // Second digit (10)
-            uint8_t digit10 = 0;
             if (number >= 10)
             {
-                number -= 100 * digit100;
-                //digit10 = div<10>(number); TODO
-                digit10 = number / 10;
-                putDigit(digit10);
+                number -= 100 * digit;
+                //digit = div<10>(number); TODO
+                digit = number / 10;
+                digitChar = convertDigitToChar(digit);
             }
-            else
-            {
-                putc(zeroChar);
-            }
+            putc(digitChar);
 
             // Third digit (1)
-            number -= 10 * digit10;
+            number -= 10 * digit;
             putDigit(number);
         }
         else
         {
+            putc('-');
+            putc('-');
             putc('-');
             return;
         }
@@ -432,7 +417,7 @@ class LCDAlphanumericBuffered
         {
             // Iterate through all rows of the LCD
             uint8_t rowCnt = 0;
-            for (auto & row : s_frameBuffer)
+            for (auto & row : s_frameBuffer.rows)
             {
                 // Set Cursor to first column
                 LCDAlphanumeric::setCursor(rowCnt++, 0);
@@ -462,14 +447,22 @@ class LCDAlphanumericBuffered
         return getNofRows() * getNofColumns();
     }
     
-    static char s_frameBuffer[getNofRows()][getNofColumns()];
+    //static char s_frameBuffer[getNofRows()][getNofColumns()];
+    typedef union
+    {
+        char buffer[getNofChars()];
+        char rows[getNofRows()][getNofColumns()];
+    } FrameBuffer;
+    
+    static FrameBuffer s_frameBuffer;
+    
     static uint8_t s_cursor;
     static bool s_refresh;
 };
 
 // Static initialization
 template <typename LCDAlphanumeric>
-char LCDAlphanumericBuffered<LCDAlphanumeric>::s_frameBuffer[getNofRows()][getNofColumns()];
+typename LCDAlphanumericBuffered<LCDAlphanumeric>::FrameBuffer LCDAlphanumericBuffered<LCDAlphanumeric>::s_frameBuffer;
 
 template <typename LCDAlphanumeric>
 uint8_t LCDAlphanumericBuffered<LCDAlphanumeric>::s_cursor;

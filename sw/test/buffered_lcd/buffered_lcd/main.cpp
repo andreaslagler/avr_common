@@ -15,81 +15,186 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <https://www.gnu.org/licenses/>.
 */
 
-// #ifdef AVR_ATmega1284P
-
-// Hardware-specific configuration
-
-// ATMega1284P is running at 20 MHz
-#define F_CPU 20000000UL
-
-#include "m1284p_GPIO.h"
-#include "m1284p_SPI.h"
-
-using SPI = m1284p::SPI;
-
-// Multiplexer for SPI Slave Select pin hooked to PD7:4
-using SSMuxPort = m1284p::GPIOSubPort<m1284p::Port::D, PORTD4, PORTD7>;
-
-// #endif
-
-#include "HD44780.h"
-#include "line_decoder.h"
-
-#include "spi_master.h"
-#include "mux_output_pin.h"
 #include "buffered_lcd.h"
 
-using SPIMaster = SPIMasterSync<SPI>;
-using SSMux = LineDecoder<SSMuxPort>;
-constexpr uint8_t SSLCDPinIdx = 10;
-using SSLCDPin = MuxPin<SSMux, SPIMaster::SS_Pin, SSLCDPinIdx>;
-using LCDPort = HD44780_Configuration_74HC595<SPIMaster, SSLCDPin>;
-using LCD = LCDAlphanumericBuffered<HD44780<HD44780_NofCharacters::_2x16, LCDPort>>; // 2x16 display using LCD port defined above
 
-// Stream interface for LCD
-template <typename LCD>
-struct LCDStream
+void print(const char * str)
 {
-    template <typename Arg>
-    LCDStream<LCD> & operator<<(const Arg& arg)
+    // Put a tracepoint here
+    // {str,s}
+}
+
+// Dummy for LCD driver emulating a 2x16 LCD
+class DummyLCD
+{
+    public:
+    
+    static constexpr uint8_t getNofColumns()
     {
-        LCD::put(arg);
-        LCD::refresh();
-        return *this;
+        return s_nofCols;
     }
 
-    //struct Clear {};
-    static constexpr struct EndLine{} endl = EndLine();
-
-    LCDStream<LCD> & operator<< (const EndLine& arg)
+    static constexpr uint8_t getNofRows()
     {
-        LCD::newLine();
-        return *this;
+        return s_nofRows;
     }
     
-    static constexpr struct Flush{} flush = Flush();
-
-    LCDStream<LCD> & operator<< (const Flush& arg)
+    static constexpr void init()
     {
-        LCD::clear();
-        return *this;
+        for (char & c : s_buffer)
+        {
+            c = ' ';
+        }
+        
+        s_buffer[s_nofRows * s_nofCols] = '\0';
+        
+        s_cursor = 0;
     }
+    
+    static void putc(const char c)
+    {
+        s_buffer[s_cursor++] = c;
+        
+        // Only dump LCD content on a complete refresh 
+        if (s_cursor >= s_nofRows * s_nofCols)
+        {
+            print(s_buffer);
+        }            
+    }
+    
+    static constexpr void setCursor(const uint8_t row, const uint8_t col)
+    {
+        s_cursor = row * s_nofCols + col;
+    }
+    
+    private:
+    
+    static constexpr uint8_t s_nofRows = 2;
+    static constexpr uint8_t s_nofCols = 16;
+    
+    static uint8_t s_cursor;
+    static char s_buffer[s_nofRows * s_nofCols+1];
 };
+
+uint8_t DummyLCD::s_cursor = 0;
+char DummyLCD::s_buffer[s_nofRows * s_nofCols+1];
+
+using LCD = LCDAlphanumericBuffered<DummyLCD>;
 
 int main()
 {
-    SPIMaster::init(
-    m1284p::SPI::ClockRate::FOSC_4,
-    m1284p::SPI::DataOrder::MSB_FIRST,
-    m1284p::SPI::ClockPolarity::LOW,
-    m1284p::SPI::ClockPhase::LEADING);
-
-    SSMux::init();
-
     LCD::init();
     
-    LCDStream<LCD> lcd;
-    lcd << "Hello"_pgm << LCDStream<LCD>::endl << "World!";
+    LCD::put("Hello World!");
+    LCD::refresh();
+    
+    LCD::clear();
+    LCD::put("PROGRAM MEMORY"_pgm); 
+    LCD::refresh();
 
+    LCD::clear();    
+    LCD::put(String<12>("DATA MEMORY"));
+    LCD::refresh();
+
+    LCD::clear();
+    LCD::putNum(static_cast<uint8_t>(1));
+    LCD::refresh();
+
+    LCD::clear();
+    LCD::putNum(static_cast<uint8_t>(12));
+    LCD::refresh();
+
+    LCD::clear();
+    LCD::putNum(static_cast<uint8_t>(123));
+    LCD::refresh();
+
+    LCD::clear();
+    LCD::putNum2(static_cast<uint8_t>(1));
+    LCD::refresh();
+
+    LCD::clear();
+    LCD::putNum2(static_cast<uint8_t>(12));
+    LCD::refresh();
+
+    LCD::clear();
+    LCD::putNum2(static_cast<uint8_t>(123));
+    LCD::refresh();
+
+    LCD::clear();
+    LCD::putNum1(static_cast<uint8_t>(1));
+    LCD::refresh();
+
+    LCD::clear();
+    LCD::putNum1(static_cast<uint8_t>(12));
+    LCD::refresh();
+
+    LCD::clear();
+    LCD::putNum1(static_cast<uint8_t>(123));
+    LCD::refresh();
+
+    LCD::clear();
+    LCD::putNum(static_cast<int8_t>(1));
+    LCD::refresh();
+
+    LCD::clear();
+    LCD::putNum(static_cast<int8_t>(12));
+    LCD::refresh();
+
+    LCD::clear();
+    LCD::putNum(static_cast<int8_t>(123));
+    LCD::refresh();
+
+    LCD::clear();
+    LCD::putNum(static_cast<int8_t>(-1));
+    LCD::refresh();
+
+    LCD::clear();
+    LCD::putNum(static_cast<int8_t>(-12));
+    LCD::refresh();
+
+    LCD::clear();
+    LCD::putNum(static_cast<int8_t>(-123));
+    LCD::refresh();
+
+    LCD::clear();
+    LCD::putNum(static_cast<uint16_t>(1));
+    LCD::refresh();
+
+    LCD::clear();
+    LCD::putNum(static_cast<uint16_t>(12));
+    LCD::refresh();
+
+    LCD::clear();
+    LCD::putNum(static_cast<uint16_t>(123));
+    LCD::refresh();
+
+    LCD::clear();
+    LCD::putNum(static_cast<uint16_t>(1234));
+    LCD::refresh();
+
+    LCD::clear();
+    LCD::putNum(static_cast<uint16_t>(12345));    
+    LCD::refresh();
+    
+    LCD::clear();    
+    LCD::putNum3(static_cast<uint16_t>(1));
+    LCD::refresh();
+
+    LCD::clear();
+    LCD::putNum3(static_cast<uint16_t>(12));
+    LCD::refresh();
+
+    LCD::clear();
+    LCD::putNum3(static_cast<uint16_t>(123));
+    LCD::refresh();
+
+    LCD::clear();
+    LCD::putNum3(static_cast<uint16_t>(1234));
+    LCD::refresh();
+
+    LCD::clear();
+    LCD::putNum3(static_cast<uint16_t>(12345));
+    LCD::refresh();
+    
     while(true);
 }
