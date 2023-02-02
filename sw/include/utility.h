@@ -18,50 +18,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef UTILITY_H
 #define UTILITY_H
 
-#include <bits/c++config.h>
-#include <type_traits>
-
-/**
-@brief Move an object
-move is used to indicate that an object t may be "moved from", i.e. allowing the efficient transfer of resources from t to another object.
-In particular, move produces an xvalue expression that identifies its argument t. It is exactly equivalent to a static_cast to an rvalue reference type.
-@tparam T
-@param t The object to be moved
-@result static_cast<typename remove_reference<T>::type&&>(t)
-*/
-template<typename T>
-CXX14_CONSTEXPR typename remove_reference<T>::type&& move(T&& t)
-{
-    return static_cast<typename remove_reference<T>::type&&>(t);
-}
-
-/**
-@brief Forward an object
-Forwards lvalues as either lvalues or as rvalues, depending on T
-When t is a forwarding reference (a function argument that is declared as an rvalue reference to a cv-unqualified function template parameter), this overload forwards the argument to another function with the value category it had when passed to the calling function.
-@tparam T
-@param t The object to be forwarded
-@result static_cast<T&&>(t)
-*/
-template<typename T>
-CXX14_CONSTEXPR T&& forward(typename remove_reference<T>::type& t)
-{
-    return static_cast<T&&>(t);
-}
-
-/**
-@brief Forward an object
-Forwards rvalues as rvalues and prohibits forwarding of rvalues as lvalues
-This overload makes it possible to forward a result of an expression (such as function call), which may be rvalue or lvalue, as the original value category of a forwarding reference argument.
-@tparam T
-@param t The object to be forwarded
-@result static_cast<T&&>(t)
-*/
-template<typename T>
-CXX14_CONSTEXPR T&& forward(typename remove_reference<T>::type&& t)
-{
-    static_assert(!is_lvalue_reference<T>::value);
-    return static_cast<T&&>(t);
-}
+#include <bits/move.h>
 
 #endif

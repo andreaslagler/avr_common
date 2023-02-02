@@ -25,36 +25,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdbool.h>
 
 /**
-@brief Swaps the values of two objects
-Swaps the values a and b
-@param a the values to be swapped
-@param b the values to be swapped
-*/
-template <class T>
-CXX20_CONSTEXPR void swap(T& a, T& b)
-{
-    T tmp(move(a));
-    a = move(b);
-    b = move(tmp);
-}
-
-/**
-@brief Swaps the values of two objects
-Swaps the arrays a and b
-@param a the values to be swapped
-@param b the values to be swapped
-*/
-template< class T, uint8_t N >
-CXX20_CONSTEXPR void swap(T (&a)[N], T (&b)[N])
-{
-    T* ptrB = b;
-    for (T & elemA : a)
-    {
-        swap(elemA, *ptrB++);
-    }
-}    
-
-/**
 @brief Applies a function to a range of elements
 Applies the given function object f to the result of dereferencing every iterator in the range [first, last), in order.
 @param first the range to apply the function to
