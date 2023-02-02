@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef UTILITY_H
 #define UTILITY_H
 
+#include <bits/pair.h>
 #include <bits/move.h>
 
 #endif
