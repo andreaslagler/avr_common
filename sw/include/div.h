@@ -18,6 +18,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef DIV_H
 #define DIV_H
 
+#include <stdint.h>
+
 /**
 @brief Unsigned 8 bit integer division by a compile-time constant using a "multiplication and bit-shift" approach.
 @tparam t_denominator Denominator
@@ -72,7 +74,7 @@ template <>
 constexpr uint8_t div<6>(const uint8_t numerator)
 {
     // Multiplication by 171/1024 doesn't cause any round-off errors for uint8_t
-    return (uint8_t((171 * numerator) >> 8)) >> 2;
+    return static_cast<uint8_t>(static_cast<uint16_t>(static_cast<uint8_t>(171) * numerator) >> 10);
 }
 
 /**
@@ -95,7 +97,7 @@ template <>
 constexpr uint8_t div<10>(const uint8_t numerator)
 {
     // Multiplication by 205/2048 doesn't cause any round-off errors for uint8_t
-    return (uint8_t((205 * numerator) >> 8)) >> 3;
+    return static_cast<uint8_t>(static_cast<uint16_t>(static_cast<uint8_t>(205) * numerator) >> 11);
 }
 
 /**
@@ -107,9 +109,8 @@ template <>
 constexpr uint8_t div<12>(const uint8_t numerator)
 {
     // Multiplication by 171/2048 doesn't cause any round-off errors for uint8_t
-    return (uint8_t((171 * numerator) >> 8)) >> 3;
+    return static_cast<uint8_t>(static_cast<uint16_t>(static_cast<uint8_t>(171) * numerator) >> 11);
 }
-
 
 /**
 @brief Unsigned 8 bit integer division by 100.
@@ -120,7 +121,7 @@ template <>
 constexpr uint8_t div<100>(const uint8_t numerator)
 {
     // Multiplication by 41/4096 doesn't cause any round-off errors for uint8_t
-    return (uint8_t((41 * numerator) >> 8)) >> 4;
+    return static_cast<uint8_t>(static_cast<uint16_t>(static_cast<uint8_t>(41) * numerator) >> 12);
 }
 
 /**
