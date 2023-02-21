@@ -15,25 +15,16 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef EXCEPTION_H
-#define EXCEPTION_H
+#ifndef NEW_H
+#define NEW_H
 
-/**
-@brief Length error exception
-The definition of this function is application specific
-*/
-void throw_length_error() __attribute__ ((noreturn, noinline));
+#include <bits/c++config.h>
 
-/**
-@brief Out of range exception
-The definition of this function is application specific
-*/
-void throw_out_of_range() __attribute__ ((noreturn, noinline));
+// Placement new() operator
+constexpr inline void* operator new (size_t, void* ptr)
+{
+    return ptr;
+};
 
-/**
-@brief Bad alloc exception
-The definition of this function is application specific
-*/
-void throw_bad_alloc() __attribute__ ((noreturn, noinline));
 
 #endif

@@ -18,24 +18,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef DEBUG_PRINT_H
 #define DEBUG_PRINT_H
 
-
+#include <type_traits>
 
 // Debug console printer as described here https://microchipsupport.force.com/s/article/print-out-the-string-variable-into-the-Atmel-studio-output-window
-template<typename Arg, typename... Args>
-struct debugPrinter
-{
-    static void print(Arg arg, Args ...args)
-    {
-        debugPrinter<Arg>::print(arg);
-        debugPrinter<Args...>::print(args...);
-    }
-};
-
-template<typename... Args>
-void debugPrint(Args ...args)
-{
-    debugPrinter<Args...>::print(args...);
-}
+template<typename T>
+struct debugPrinter;
 
 /*
 Tracepoints don't seem to work in header files, so all used specializations of the debugPrinter must go into a cpp file
@@ -74,45 +61,45 @@ Tracepoints don't seem to work in header files, so all used specializations of t
 
 #include <type_traits>
 
-    struct DebugOutputStream
+struct DebugOutputStream
+{
+    template<typename T>
+    DebugOutputStream & operator<<(const T& t)
     {
-        template<typename T>
-        DebugOutputStream & operator<<(T t)
+        debugPrinter<T>::print(t);
+        return *this;
+    }
+        
+    class Iterator
+    {
+        public:
+        Iterator(DebugOutputStream& debugOutput)
+        :
+        m_debugOutput(debugOutput)
+        {}
+            
+        Iterator& operator++()
         {
-            debugPrinter<typename remove_cv<T>::type>::print(t);
             return *this;
         }
-
-        class Iterator
+            
+        DebugOutputStream& operator*()
         {
-            public:
-            Iterator(DebugOutputStream& debugOutput)
-            :
-            m_debugOutput(debugOutput)
-            {}
-            
-            Iterator& operator++()
-            {
-                return *this;
-            }
-            
-            DebugOutputStream& operator*()
-            {
-                return m_debugOutput;
-            }
-            
-            private:
-            
-            DebugOutputStream& m_debugOutput;
-        };
-
-        Iterator begin()
-        {
-            return Iterator(*this);
+            return m_debugOutput;
         }
-        
+            
+        private:
+            
+        DebugOutputStream& m_debugOutput;
     };
+
+    Iterator begin()
+    {
+        return Iterator(*this);
+    }
+        
+};
     
-    inline static DebugOutputStream cout;
+inline static DebugOutputStream cout;
 
 #endif
