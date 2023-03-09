@@ -18,68 +18,189 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include "allocator.h"
 #include "..\..\common\debug_print.h"
 
-// Test for AvailableListAllocator
+bool test_assert(const char * str, const bool flag)
+{
+    cout << str;
+    if (flag)
+    {
+        cout << static_cast<const char *>("PASSED");
+    }
+    else
+    {
+        cout << static_cast<const char *>("FAILED");
+    }
+    return flag;
+}
+
+
 int main(void)
 {
-    // Allocator for up to 4 uint16_t
-    AvailableListAllocator<uint16_t, 4> allocator;
+    bool allPassed = true;
+    bool testPassed = true;
 
-    // Allocate/deallocate different number of bytes
-    void * ptr;
+    // PoolAllocator
+    {
+        testPassed = true;
+        
+        // Pool allocator for up to 4 uint16_t
+        constexpr size_t capacity = 4;
+        PoolAllocator<uint16_t, capacity> allocator;
 
-    ptr = allocator.alloc(0);
-    cout << ptr;
-    allocator.dealloc(ptr);
+        // Allocate/deallocate different number of bytes
+        void * ptr = nullptr;
 
-    ptr = allocator.alloc(1);
-    cout << ptr;
-    allocator.dealloc(ptr);
+        ptr = allocator.allocate(0);
+        testPassed &= nullptr != ptr;
+        allocator.deallocate(ptr);
 
-    ptr = allocator.alloc(2);
-    cout << ptr;
-    allocator.dealloc(ptr);
+        ptr = allocator.allocate(1);
+        testPassed &= nullptr != ptr;
+        allocator.deallocate(ptr);
+
+        ptr = allocator.allocate(2);
+        testPassed &= nullptr != ptr;
+        allocator.deallocate(ptr);
+        
+        ptr = allocator.allocate(3); // Will return NULL
+        testPassed &= nullptr == ptr;
+
+        // Allocate multiple pointers
+        void * ptr1 = allocator.allocate(1);
+        testPassed &= nullptr != ptr1;
+
+        void * ptr2 = allocator.allocate(1);
+        testPassed &= nullptr != ptr2;
+
+        void * ptr3 = allocator.allocate(1);
+        testPassed &= nullptr != ptr3;
+
+        void * ptr4 = allocator.allocate(1);
+        testPassed &= nullptr != ptr4;
+
+        void * ptr5 = allocator.allocate(1); // Will return NULL
+        testPassed &= nullptr == ptr5;
+        
+        allocator.deallocate(ptr2);
+        
+        ptr5 = allocator.allocate(1);
+        testPassed &= nullptr != ptr5;
+        
+        allocator.deallocate(ptr1);
+        allocator.deallocate(ptr3);
+        allocator.deallocate(ptr4);
+        allocator.deallocate(ptr5);
+        
+        // Deallocate nullptr
+        allocator.deallocate(nullptr);
+        
+        // Check capacity
+        testPassed &= capacity == allocator.capacity();
+    }
+    allPassed &= test_assert("PoolAllocator", testPassed);
+
     
-    //ptr = allocator.alloc(3); // Error: bad alloc 
-
-    // Allocate multiple pointers
-    void * ptr1 = allocator.alloc(1);
-    cout << ptr1;
-
-    void * ptr2 = allocator.alloc(1);
-    cout << ptr2;
-
-    void * ptr3 = allocator.alloc(1);
-    cout << ptr3;
-
-    void * ptr4 = allocator.alloc(1);
-    cout << ptr4;
-
-    void * ptr5 = allocator.alloc(1); // This will return nullptr
-    cout << ptr5;
     
-    allocator.dealloc(ptr2);
-    
-    ptr5 = allocator.alloc(1);
-    cout << ptr5;
-    
-    allocator.dealloc(ptr1);
-    allocator.dealloc(ptr3);
-    allocator.dealloc(ptr4);
-    allocator.dealloc(ptr5);
-    
-    // Deallocate nullptr
-    allocator.dealloc(nullptr);
-    
-    cout << "END OF PROGRAM";
+    // FreeListAllocator
+    {
+        testPassed = true;
+        
+        constexpr size_t capacity = 24;
+        char memory[capacity];
+        FreeListAllocator allocator(memory, capacity);
+        
+        // Allocate/deallocate different number of bytes
+        {
+        void * ptr = nullptr;
+
+        ptr = allocator.allocate(0);
+        testPassed &= nullptr != ptr;
+        allocator.deallocate(ptr);
+
+        ptr = allocator.allocate(1);
+        testPassed &= nullptr != ptr;
+        allocator.deallocate(ptr);
+
+        ptr = allocator.allocate(20);
+        testPassed &= nullptr != ptr;
+        allocator.deallocate(ptr);
+        
+        ptr = allocator.allocate(21); // Will return NULL
+        testPassed &= nullptr == ptr;
+        }        
+
+        // Allocate multiple pointers without fragmenting the memory
+        {
+            void * ptr1 = allocator.allocate(2);
+        testPassed &= nullptr != ptr1;
+
+        void * ptr2 = allocator.allocate(2);
+        testPassed &= nullptr != ptr2;
+
+        void * ptr3 = allocator.allocate(2);
+        testPassed &= nullptr != ptr3;
+
+        void * ptr4 = allocator.allocate(2);
+        testPassed &= nullptr != ptr4;
+
+        void * ptr5 = allocator.allocate(2); // Will return NULL
+        testPassed &= nullptr == ptr5;
+        
+        allocator.deallocate(ptr2);
+        
+        ptr5 = allocator.allocate(2);
+        testPassed &= nullptr != ptr5;
+
+        allocator.deallocate(ptr1);
+        allocator.deallocate(ptr3);
+        allocator.deallocate(ptr4);
+        allocator.deallocate(ptr5);
+        }        
+        
+       // Allocate multiple pointers with fragmenting the memory
+        {
+            void * ptr1 = allocator.allocate(2);
+        testPassed &= nullptr != ptr1;
+
+        void * ptr2 = allocator.allocate(2);
+        testPassed &= nullptr != ptr2;
+
+        void * ptr3 = allocator.allocate(2);
+        testPassed &= nullptr != ptr3;
+
+        void * ptr4 = allocator.allocate(2);
+        testPassed &= nullptr != ptr4;
+
+        allocator.deallocate(ptr1);
+        allocator.deallocate(ptr3);
+        
+        // Allocator has enough free memory, but memory is fragmented
+        void * ptr5 = allocator.allocate(8);
+        testPassed &= nullptr == ptr5;
+        
+        allocator.deallocate(ptr2);
+        
+        // Memory should be defragmented now
+        ptr5 = allocator.allocate(8);
+        testPassed &= nullptr != ptr5;
+        
+        allocator.deallocate(ptr4);
+        allocator.deallocate(ptr5);
+        }        
+        
+        // Deallocate nullptr
+        allocator.deallocate(nullptr);
+        
+        // Check capacity
+        //testPassed &= capacity == allocator.capacity();
+
+    }
+    allPassed &= test_assert("FreeListAllocator", testPassed);
+
+    test_assert("Overall", allPassed);
     
     while (true)
     {
     }
-}
-
-[[noreturn]] void throw_bad_alloc()
-{
-    while(true);
 }
 
 
@@ -94,12 +215,3 @@ struct debugPrinter<const char*>
     }
 };
 
-template<>
-struct debugPrinter<void*>
-{
-    static void print(void* arg)
-    {
-        // Put a tracepoint here and display {arg} in output window
-        (void)arg;
-    }
-};
