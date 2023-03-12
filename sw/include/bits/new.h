@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define NEW_H
 
 #include <bits/c++config.h>
+#include <stddef.h> // size_t
 
 // Placement new() operator
 constexpr inline void* operator new (size_t, void* ptr)

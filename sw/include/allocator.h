@@ -86,6 +86,17 @@ class PoolAllocator
     }
     
     /**
+    @brief Equality operator
+    Check if allocator is equal to other
+    @param other Allcoator to compare with
+    @result true if allocators are equal, false otherwise
+    */
+    constexpr bool operator==(const PoolAllocator& other) const
+    {
+        return m_nodes == other.m_nodes;
+    }
+    
+    /**
     @brief Allocator capacity
     Total number of memory nodes
     @result Allocator capacity
@@ -129,7 +140,7 @@ class FreeListAllocator
     @param memory Pointer to memory to allocate from
     @param size Number of bytes available
     */
-    FreeListAllocator(void* memory, size_type size) : m_capacity(size - sizeof(Node))
+    FreeListAllocator(void* memory = nullptr, size_type size = 0) : m_memory(memory), m_capacity(size - sizeof(Node))
     {
         m_head = reinterpret_cast<Node*>(memory);
         m_head->m_next = nullptr;
@@ -297,6 +308,17 @@ class FreeListAllocator
     }
     
     /**
+    @brief Equality operator
+    Check if allocator is equal to other
+    @param other Allcoator to compare with
+    @result true if allocators are equal, false otherwise
+    */
+    constexpr bool operator==(const FreeListAllocator& other) const
+    {
+        return m_memory == other.m_memory;
+    }
+    
+    /**
     @brief Allocator capacity
     Total number of bytes available
     @result Allocator capacity
@@ -314,6 +336,7 @@ class FreeListAllocator
         Node* m_next;
     };
 
+    void* m_memory = nullptr;
     size_t m_capacity = 0;
     mutable Node* m_head = nullptr;
 };

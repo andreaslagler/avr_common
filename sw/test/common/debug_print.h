@@ -59,8 +59,6 @@ Tracepoints don't seem to work in header files, so all used specializations of t
     //}
 //};
 
-#include <type_traits>
-
 struct DebugOutputStream
 {
     template<typename T>

@@ -19,6 +19,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define EXCEPTION_H
 
 /**
+@brief Null pointer exception
+The definition of this function is application specific
+*/
+void throw_nullptr_error() __attribute__ ((noreturn, noinline));
+
+/**
 @brief Length error exception
 The definition of this function is application specific
 */
