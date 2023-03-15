@@ -23,6 +23,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <bits/new.h>
 #include <exception.h>
 #include <initializer_list>
+#include <allocator.h>
 #include <stdbool.h>
 
 /**
@@ -30,7 +31,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 @tparam T Type of queue elements
 @tparam An allocator that is used to acquire/release memory and to construct/destroy the elements in that
 */
-template <typename T, typename Allocator>
+template <typename T, typename Allocator = HeapAllocator<>>
 class ForwardList
 {    
     class NodeBase;
@@ -672,8 +673,7 @@ class ForwardList
         // Insert missing elements
         insertAfter(pos, count, value);
     }
-    
-    
+        
     /**
     @brief Moves elements from another ForwardList to *this.
     No elements are copied. pos must be either a dereferenceable valid iterator into *this or the beforeBegin() iterator (in particular, end() is not a valid argument for pos).
@@ -776,7 +776,7 @@ class ForwardList
     }
 
     NodeBase m_head;
-    const Allocator& m_allocator;
+    Allocator m_allocator;
 };
 
 #endif

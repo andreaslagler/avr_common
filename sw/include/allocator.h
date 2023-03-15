@@ -21,36 +21,76 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <bits/c++config.h>
 #include <stddef.h> // size_t
 #include <type_traits> // DownCast
+#include <bits/move.h>
 
 /**
 @brief Pool allocator
-Memory allocator using a fixed capacity linked list of available memory nodes each holding memory for one element of specified type
-@tparam T Data type managed by allocator class
-@tparam t_capacity Number of memory nodes
+Memory allocator using a fixed capacity linked list of available memory nodes each holding a fixed size block of memory
 */
-template <typename T, size_t t_capacity>
 class PoolAllocator
 {
     public:
     
-    using size_type = typename DownCast<t_capacity>::type;
+    using size_type = size_t;
     
     /**
     @brief Default constructor
     */
-    CXX14_CONSTEXPR PoolAllocator()
+    CXX14_CONSTEXPR PoolAllocator() = default;
+    
+    
+    CXX14_CONSTEXPR PoolAllocator(void* memory, size_type memorySize, size_type nodeSize) : m_nodeSize(nodeSize > sizeof(Node) ? nodeSize : sizeof(Node))
     {
-        // Build linked list of memory nodes
-        for (size_t cnt = 0; cnt < t_capacity-1; ++cnt)
+        m_head = nullptr;
+        while (memorySize >= m_nodeSize)
         {
-            m_nodes[cnt].m_next = &m_nodes[cnt+1];
+            Node* node = reinterpret_cast<Node*>(memory);
+            node->m_next = m_head;
+            m_head = node;
+            memory = reinterpret_cast<uint8_t*>(memory) + m_nodeSize;
+            memorySize -= m_nodeSize;
         }
-        
-        // Attach to list head
-        m_head = m_nodes;
-        
-        // Terminate list with nullptr
-        m_nodes[t_capacity-1].m_next = nullptr;
+    }
+    
+        /**
+    @brief Copy constructor
+    There cannot be two copies of the one allocator managing the same memory
+    @param other Allocator to copy from
+    */
+    PoolAllocator(const PoolAllocator& other) = delete;
+
+    /**
+    @brief move constructor
+    Constructs a free list allocator from another free list allocator using move semantics
+    @param other Allocator to move from
+    */
+    CXX14_CONSTEXPR PoolAllocator(PoolAllocator&& other)
+    {
+        if (&other != this)
+        {
+            swap(other);
+        }        
+    }
+
+    /**
+    @brief Copy assignment
+    There cannot be two copies of the one allocator managing the same memory
+    @param other Allocator to copy from
+    */
+    PoolAllocator& operator=(const PoolAllocator& other) = delete;
+
+    /**
+    @brief Move assignment
+    Assigns a free list allocator using move semantics
+    @param other Allocator to move from
+    */
+    CXX14_CONSTEXPR PoolAllocator& operator=(PoolAllocator&& other)
+    {
+        if (&other != this)
+        {
+            swap(other);
+        }
+        return *this;
     }
     
     /**
@@ -59,10 +99,10 @@ class PoolAllocator
     @result Pointer to allocated memory for storing one element of type T
     @note If the allocator is out of memory, a nullptr is returned
     */
-    constexpr void * allocate(const size_t size) const
+    CXX14_CONSTEXPR void * allocate(const size_t size)
     {
         Node* ptr = m_head;
-        if (ptr == nullptr || sizeof(T) < size)
+        if (ptr == nullptr || m_nodeSize < size)
         {
             return nullptr;
         }
@@ -75,7 +115,7 @@ class PoolAllocator
     Deallocates a given pointer to memory and returns the corresponding memory node to the pool.
     @param Pointer to memory to be deallocated
     */
-    constexpr void deallocate(void * ptr) const
+    CXX14_CONSTEXPR void deallocate(void * ptr)
     {
         if (nullptr != ptr)
         {
@@ -88,39 +128,35 @@ class PoolAllocator
     /**
     @brief Equality operator
     Check if allocator is equal to other
-    @param other Allcoator to compare with
+    @param other Allocator to compare with
     @result true if allocators are equal, false otherwise
     */
-    constexpr bool operator==(const PoolAllocator& other) const
+    constexpr bool operator==(const PoolAllocator& other)
     {
-        return m_nodes == other.m_nodes;
+        // Since there are no copies of FreeListAllocator allowed, two equal objects must be the same object
+        return this == &other;
+    }
+       
+    /**
+    @brief Swap allocators
+    @param other Allocator to swap with
+    */
+    CXX14_CONSTEXPR void swap(PoolAllocator& other)
+    {
+        ::swap(m_nodeSize, other.m_nodeSize);
+        ::swap(m_head, other.m_head);
     }
     
-    /**
-    @brief Allocator capacity
-    Total number of memory nodes
-    @result Allocator capacity
-    */
-    constexpr static size_type capacity()
-    {
-        return static_cast<size_type>(t_capacity);
-    }    
-
     private:
 
     // Memory node
-    union Node
+    struct Node
     {
-        char m_data[sizeof(T)]; // 8 bit AVR does not require any data alignment
         Node* m_next;
     };
     
-    // Array of available memory nodes
-    Node m_nodes[t_capacity];
-    
-    // List of available memory nodes
-    // NB the list is declared volatile for interrupt-safety
-    mutable Node * m_head = nullptr;
+    size_type m_nodeSize = sizeof(Node);
+    Node * m_head = nullptr;
 };
 
 
@@ -134,19 +170,61 @@ class FreeListAllocator
     
     using size_type = size_t;
     
+    CXX14_CONSTEXPR FreeListAllocator() = default;
+    
     /**
     @brief Constructor
-    Constructs a free list allocator from a given data pointer and size
+    Constructs a free list allocator from a given data pointer and capacity
     @param memory Pointer to memory to allocate from
     @param size Number of bytes available
     */
-    FreeListAllocator(void* memory = nullptr, size_type size = 0) : m_memory(memory), m_capacity(size - sizeof(Node))
+    FreeListAllocator(void* memory, size_type capacity)
     {
         m_head = reinterpret_cast<Node*>(memory);
         m_head->m_next = nullptr;
-        m_head->m_size = size - sizeof(Node);
+        m_head->m_size = capacity - sizeof(Node);
     }
 
+    /**
+    @brief Copy constructor
+    There cannot be two copies of the one allocator managing the same memory
+    @param other Allocator to copy from
+    */
+    FreeListAllocator(const FreeListAllocator& other) = delete;
+
+    /**
+    @brief move constructor
+    Constructs a free list allocator from another free list allocator using move semantics
+    @param other Allocator to move from
+    */
+    CXX14_CONSTEXPR FreeListAllocator(FreeListAllocator&& other)
+    {
+        if (&other != this)
+        {
+            swap(other);
+        }        
+    }
+
+    /**
+    @brief Copy assignment
+    There cannot be two copies of the one allocator managing the same memory
+    @param other Allocator to copy from
+    */
+    FreeListAllocator& operator=(const FreeListAllocator& other) = delete;
+
+    /**
+    @brief Move assignment
+    Assigns a free list allocator using move semantics
+    @param other Allocator to move from
+    */
+    CXX14_CONSTEXPR FreeListAllocator& operator=(FreeListAllocator&& other)
+    {
+        if (&other != this)
+        {
+            swap(other);
+        }
+        return *this;
+    }
 
     /**
     @brief Allocation of memory
@@ -154,7 +232,7 @@ class FreeListAllocator
     @result Pointer to allocated memory for storing one element of type T
     @note If the allocator is out of memory, a nullptr is returned
     */
-    CXX14_CONSTEXPR void* allocate(const size_type size) const
+    CXX14_CONSTEXPR void* allocate(const size_type size)
     {
         // Find first memory node of sufficient size
         Node* prevNode = nullptr;
@@ -208,7 +286,7 @@ class FreeListAllocator
     Deallocates a given pointer to memory and returns the corresponding memory node to the pool.
     @param Pointer to memory to be deallocated
     */
-    CXX14_CONSTEXPR void deallocate(void* ptr) const
+    CXX14_CONSTEXPR void deallocate(void* ptr)
     {
         if (nullptr == ptr)
         {
@@ -310,35 +388,148 @@ class FreeListAllocator
     /**
     @brief Equality operator
     Check if allocator is equal to other
-    @param other Allcoator to compare with
+    @param other Allocator to compare with
     @result true if allocators are equal, false otherwise
     */
     constexpr bool operator==(const FreeListAllocator& other) const
     {
-        return m_memory == other.m_memory;
+        // Since there are no copies of FreeListAllocator allowed, two equal objects must be the same object
+        return this == &other;
     }
     
     /**
-    @brief Allocator capacity
-    Total number of bytes available
-    @result Allocator capacity
+    @brief Swap allocators
+    @param other Allocator to swap with
     */
-    constexpr size_type capacity() const
+    CXX14_CONSTEXPR void swap(FreeListAllocator& other)
     {
-        return m_capacity;
+        ::swap(m_head, other.m_head);
     }
     
     private:
-    
+      
     struct Node
     {
         size_type m_size;
         Node* m_next;
     };
-
-    void* m_memory = nullptr;
-    size_t m_capacity = 0;
-    mutable Node* m_head = nullptr;
+    
+    Node* m_head = nullptr;
 };
+
+#ifndef HEAP_SIZE
+#define HEAP_SIZE 1024
+#endif
+
+/**
+@brief Heap allocator
+Memory allocator using a linked list of available memory nodes of individual size
+*/
+template <size_t t_capacity = HEAP_SIZE>
+class HeapAllocator
+{
+    public:
+    
+    using size_type = size_t;
+    
+    CXX14_CONSTEXPR HeapAllocator() = default;
+    
+    /**
+    @brief Copy constructor
+    There cannot be two copies of the one allocator managing the same memory
+    @param other Allocator to copy from
+    */
+    CXX14_CONSTEXPR HeapAllocator(const HeapAllocator&)
+    {
+        // HeapAllocator is stateless --> nothing to do
+    }
+
+    /**
+    @brief move constructor
+    Constructs a free list allocator from another free list allocator using move semantics
+    @param other Allocator to move from
+    */
+    CXX14_CONSTEXPR HeapAllocator(HeapAllocator&&)
+    {
+        // HeapAllocator is stateless --> nothing to do
+    }
+
+    /**
+    @brief Copy assignment
+    There cannot be two copies of the one allocator managing the same memory
+    @param other Allocator to copy from
+    */
+    constexpr HeapAllocator& operator=(const HeapAllocator&)
+    {
+        // HeapAllocator is stateless --> nothing to do
+        return *this;
+    }
+
+    /**
+    @brief Move assignment
+    Assigns a free list allocator using move semantics
+    @param other Allocator to move from
+    */
+    constexpr HeapAllocator& operator=(HeapAllocator&&)
+    {
+        // HeapAllocator is stateless --> nothing to do
+        return *this;
+    }
+
+    /**
+    @brief Allocation of memory
+    Allocates the memory of one memory node detached from the pool.
+    @result Pointer to allocated memory for storing one element of type T
+    @note If the allocator is out of memory, a nullptr is returned
+    */
+    CXX14_CONSTEXPR static void* allocate(const size_type size)
+    {
+        return s_allocator.allocate(size);
+    }
+
+    /**
+    @brief Deallocation of memory
+    Deallocates a given pointer to memory and returns the corresponding memory node to the pool.
+    @param Pointer to memory to be deallocated
+    */
+    CXX14_CONSTEXPR static void deallocate(void* ptr)
+    {
+        s_allocator.deallocate(ptr);
+    }
+    
+    /**
+    @brief Equality operator
+    Check if allocator is equal to other
+    @param other Allocator to compare with
+    @result true if allocators are equal, false otherwise
+    */
+    constexpr bool operator==(const HeapAllocator&) const
+    {
+        // Two allocators are identical if memory allocated by this can be deallocated by other and vice versa
+        // This is always the case for any two HeapAllocator objects
+        return true;
+    }
+    
+    /**
+    @brief Swap allocators
+    @param other Allocator to swap with
+    */
+    constexpr void swap(HeapAllocator&)
+    {
+        // HeapAllocator is stateless --> nothing to do
+    }
+    
+    private:
+
+    static uint8_t s_memory[t_capacity];
+    static FreeListAllocator s_allocator;
+};
+
+template <size_t t_capacity>
+uint8_t HeapAllocator<t_capacity>::s_memory[t_capacity];
+
+template <size_t t_capacity>
+FreeListAllocator HeapAllocator<t_capacity>::s_allocator(HeapAllocator<t_capacity>::s_memory, t_capacity);
+
 
 #endif

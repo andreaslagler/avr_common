@@ -130,37 +130,28 @@ int main(void)
     bool allPassed = true;
     bool testPassed = true;
     
-    constexpr size_t capacity = 6;
-    //using Allocator = PoolAllocator<ForwardListNode<Test>, capacity>;
-    using Allocator = FreeListAllocator;
-
     const std::initializer_list<Test> testInit({42,43,44});        
-        
-    char testMemory[3 * (sizeof(Test)+6)];
-    const ForwardList<Test, Allocator> testList(testInit, Allocator(testMemory, 3 * (sizeof(Test)+6)));
-    
-    char memory[capacity * (sizeof(Test)+6)];
-    Allocator allocator(memory, capacity * (sizeof(Test)+6));
+    const ForwardList<Test> testList(testInit);
     
     // construct/copy/destroy
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(allocator);
+        ForwardList<Test> x;
     }
     allPassed &= test_assert("Default constructor", testPassed && Test::check(0,0,0,0,0));
     
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(allocator);
+        ForwardList<Test> x;
     }
     allPassed &= test_assert("Init constructor", testPassed && Test::check(0,0,0,0,0));
     
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(2,allocator);
+        ForwardList<Test> x(2);
         for (const Test& t : x)
         {
             testPassed &= t.getValue() == 0;
@@ -171,7 +162,7 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(2, *testInit.begin(), allocator);
+        ForwardList<Test> x(2, *testInit.begin());
         for (const Test& t : x)
         {
             testPassed &= t.getValue() == (*testInit.begin()).getValue();
@@ -182,7 +173,7 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(testInit.begin(), testInit.end(), allocator);
+        ForwardList<Test> x(testInit.begin(), testInit.end());
         auto it = testInit.begin();
         for (const Test& t : x)
         {
@@ -195,7 +186,7 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(testList, allocator);
+        ForwardList<Test> x(testList);
         auto it = testList.cbegin();
         for (const Test& t : x)
         {
@@ -210,7 +201,7 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(testInit, allocator);
+        ForwardList<Test> x(testInit);
         auto it = testInit.begin();
         for (const Test& t : x)
         {
@@ -223,8 +214,8 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> y(testInit, allocator);
-        ForwardList<Test, Allocator> x(move(y));
+        ForwardList<Test> y(testInit);
+        ForwardList<Test> x(move(y));
         testPassed &= y.empty();                
         auto it = testInit.begin();
         for (const Test& t : x)
@@ -238,7 +229,7 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(2, allocator);
+        ForwardList<Test> x(2);
         x = testList;
         auto it = testList.cbegin();
         for (const Test& t : x)
@@ -252,8 +243,8 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(allocator);
-        ForwardList<Test, Allocator> y(testInit, allocator);
+        ForwardList<Test> x;
+        ForwardList<Test> y(testInit);
         x = move(y);
         testPassed &= y.empty();
         auto it = testInit.begin();
@@ -268,7 +259,7 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(2, allocator);
+        ForwardList<Test> x(2);
         x = testInit;
         auto it = testInit.begin();
         for (const Test& t : x)
@@ -282,7 +273,7 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(2, allocator);
+        ForwardList<Test> x(2);
         x.assign(testList.begin(), testList.end());
         auto it = testList.begin();
         for (const Test& t : x)
@@ -296,7 +287,7 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(2, allocator);
+        ForwardList<Test> x(2);
         x.assign(3,*testList.begin());
         for (const Test& t : x)
         {
@@ -308,7 +299,7 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(2, allocator);
+        ForwardList<Test> x(2);
         x.assign(testInit);
         auto it = testInit.begin();
         for (const Test& t : x)
@@ -336,16 +327,16 @@ int main(void)
     
     {
         testPassed = true;
-        ForwardList<Test, Allocator> x(2, allocator);
+        ForwardList<Test> x(2);
         testPassed &= !x.empty();
-        ForwardList<Test, Allocator> y(allocator);
+        ForwardList<Test> y;
         testPassed &= y.empty();
     }
     allPassed &= test_assert("empty()", testPassed);
 
     {
         testPassed = true;
-        ForwardList<Test, Allocator> x(testList, allocator);
+        ForwardList<Test> x(testList);
         testPassed &= (*testList.begin()).getValue() == x.front().getValue();
         testPassed &= (*testList.begin()).getValue() == testList.front().getValue();
     }
@@ -354,7 +345,7 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(testList, allocator);
+        ForwardList<Test> x(testList);
         x.emplaceFront(testList.front().getValue());
         auto it = x.begin();
         testPassed &= (*it).getValue() == testList.front().getValue();
@@ -369,7 +360,7 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(testList, allocator);
+        ForwardList<Test> x(testList);
         x.pushFront(testList.front());
         auto it = x.begin();
         testPassed &= (*it).getValue() == testList.front().getValue();
@@ -384,7 +375,7 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(testList, allocator);
+        ForwardList<Test> x(testList);
         Test t = testList.front();
         x.pushFront(move(t));
         auto it = x.begin();
@@ -400,7 +391,7 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(testList, allocator);
+        ForwardList<Test> x(testList);
         x.popFront();
         auto it = testList.begin();
         for (const Test& t : x)
@@ -414,7 +405,7 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(testList, allocator);
+        ForwardList<Test> x(testList);
         x.emplaceAfter(x.cbegin(), testList.front().getValue());
         auto it = x.begin();
         testPassed &= (*it).getValue() == testList.front().getValue();
@@ -429,7 +420,7 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(testList, allocator);
+        ForwardList<Test> x(testList);
         x.insertAfter(x.cbegin(), testList.front());
         auto it = x.begin();
         testPassed &= (*it).getValue() == testList.front().getValue();
@@ -444,7 +435,7 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(testList, allocator);
+        ForwardList<Test> x(testList);
         Test t = testList.front();
         x.insertAfter(x.cbegin(), move(t));
         auto it = x.begin();
@@ -460,7 +451,7 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(testList, allocator);
+        ForwardList<Test> x(testList);
         x.insertAfter(x.cbegin(), 2,testList.front());
         auto it = x.begin();
         testPassed &= (*it).getValue() == testList.front().getValue();
@@ -477,7 +468,7 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(testList, allocator);
+        ForwardList<Test> x(testList);
         x.insertAfter(x.cbegin(), testList.front());
         auto it = x.begin();
         testPassed &= (*it).getValue() == testList.front().getValue();
@@ -492,7 +483,7 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(allocator);
+        ForwardList<Test> x;
         x.insertAfter(x.cbeforeBegin(), testList.begin(), testList.end());
         auto it = x.begin();
         for (const Test& t : testList)
@@ -506,7 +497,7 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(allocator);
+        ForwardList<Test> x;
         x.insertAfter(x.cbeforeBegin(), testInit);
         auto it = x.begin();
         for (const Test& t : testInit)
@@ -520,7 +511,7 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(testList, allocator);
+        ForwardList<Test> x(testList);
         x.eraseAfter(x.cbegin());
         auto it = testList.begin();
         for (const Test& t : x)
@@ -535,7 +526,7 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(testList, allocator);
+        ForwardList<Test> x(testList);
         x.eraseAfter(x.cbegin(), x.cend());
         auto it = testList.begin();
         for (const Test& t : x)
@@ -551,7 +542,7 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(allocator);
+        ForwardList<Test> x;
         x.resize(3);
         Test test;
         for (const Test& t : x)
@@ -564,7 +555,7 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(allocator);
+        ForwardList<Test> x;
         x.resize(3,testList.front());
         for (const Test& t : x)
         {
@@ -576,7 +567,7 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(testList, allocator);
+        ForwardList<Test> x(testList);
         testPassed &= !x.empty();
         x.clear();
         testPassed &= x.empty();
@@ -586,8 +577,8 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(testList, allocator);
-        ForwardList<Test, Allocator> y(testList, x.getAllocator());
+        ForwardList<Test> x(testList);
+        ForwardList<Test> y(testList, x.getAllocator());
         x.spliceAfter(x.cbeforeBegin(), y);
         testPassed &= y.empty();
         auto it = x.begin();
@@ -607,8 +598,8 @@ int main(void)
     {
         testPassed = true;
         Test::resetCounter();
-        ForwardList<Test, Allocator> x(testList, allocator);
-        ForwardList<Test, Allocator> y(testList, x.getAllocator());
+        ForwardList<Test> x(testList);
+        ForwardList<Test> y(testList, x.getAllocator());
         x.spliceAfter(x.cbeforeBegin(), move(y));
         testPassed &= y.empty();
         auto it = x.begin();

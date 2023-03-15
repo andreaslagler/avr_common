@@ -71,7 +71,7 @@ Swaps the values a and b
 @param b the values to be swapped
 */
 template <class T>
-CXX20_CONSTEXPR void swap(T& a, T& b)
+constexpr void swap(T& a, T& b)
 {
     T tmp(move(a));
     a = move(b);
@@ -85,7 +85,7 @@ Swaps the arrays a and b
 @param b the values to be swapped
 */
 template< class T, uint8_t N >
-CXX20_CONSTEXPR void swap(T (&a)[N], T (&b)[N])
+constexpr void swap(T (&a)[N], T (&b)[N])
 {
     T* ptrB = b;
     for (T & elemA : a)

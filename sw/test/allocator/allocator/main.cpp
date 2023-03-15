@@ -43,8 +43,10 @@ int main(void)
         testPassed = true;
         
         // Pool allocator for up to 4 uint16_t
-        constexpr size_t capacity = 4;
-        PoolAllocator<uint16_t, capacity> allocator;
+        constexpr size_t nodeSize = 2;
+        constexpr size_t capacity = 4 * nodeSize;
+        uint8_t memory[capacity];
+        PoolAllocator allocator(memory, capacity, nodeSize);
 
         // Allocate/deallocate different number of bytes
         void * ptr = nullptr;
@@ -92,9 +94,6 @@ int main(void)
         
         // Deallocate nullptr
         allocator.deallocate(nullptr);
-        
-        // Check capacity
-        testPassed &= capacity == allocator.capacity();
     }
     allPassed &= test_assert("PoolAllocator", testPassed);
 
