@@ -15,14 +15,20 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef NEW_H
-#define NEW_H
+#ifndef BITS_NEW_H
+#define BITS_NEW_H
 
 #include <bits/c++config.h>
 #include <stddef.h> // size_t
 
 // Placement new() operator
 constexpr inline void* operator new (size_t, void* ptr)
+{
+    return ptr;
+};
+
+// Placement new[]() operator
+constexpr inline void* operator new[] (size_t, void* ptr)
 {
     return ptr;
 };
