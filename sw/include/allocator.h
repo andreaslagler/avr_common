@@ -459,7 +459,7 @@ class HeapAllocator
     There cannot be two copies of the one allocator managing the same memory
     @param other Allocator to copy from
     */
-    constexpr HeapAllocator& operator=(const HeapAllocator&)
+    CXX14_CONSTEXPR HeapAllocator& operator=(const HeapAllocator&)
     {
         // HeapAllocator is stateless --> nothing to do
         return *this;
@@ -470,7 +470,7 @@ class HeapAllocator
     Assigns a free list allocator using move semantics
     @param other Allocator to move from
     */
-    constexpr HeapAllocator& operator=(HeapAllocator&&)
+    CXX14_CONSTEXPR HeapAllocator& operator=(HeapAllocator&&)
     {
         // HeapAllocator is stateless --> nothing to do
         return *this;
