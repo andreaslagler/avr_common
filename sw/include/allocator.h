@@ -39,6 +39,12 @@ class PoolAllocator
     CXX14_CONSTEXPR PoolAllocator() = default;
     
     
+    /**
+    @brief Constructor
+    @param memory Pointer to a memory pool
+    @param memorySize size of the memory pool in bytes
+    @param nodeSize size of one allocation node in bytes
+    */
     CXX14_CONSTEXPR PoolAllocator(void* memory, size_type memorySize, size_type nodeSize) : m_nodeSize(nodeSize > sizeof(Node) ? nodeSize : sizeof(Node))
     {
         m_head = nullptr;
@@ -52,7 +58,7 @@ class PoolAllocator
         }
     }
     
-        /**
+    /**
     @brief Copy constructor
     There cannot be two copies of the one allocator managing the same memory
     @param other Allocator to copy from
@@ -66,15 +72,12 @@ class PoolAllocator
     */
     CXX14_CONSTEXPR PoolAllocator(PoolAllocator&& other)
     {
-        if (&other != this)
-        {
-            swap(other);
-        }        
+        operator=(forward<PoolAllocator>(other));
     }
 
     /**
     @brief Copy assignment
-    There cannot be two copies of the one allocator managing the same memory
+    There must not be copies of the one allocator managing the same memory
     @param other Allocator to copy from
     */
     PoolAllocator& operator=(const PoolAllocator& other) = delete;
@@ -101,12 +104,21 @@ class PoolAllocator
     */
     CXX14_CONSTEXPR void * allocate(const size_t size)
     {
-        Node* ptr = m_head;
-        if (ptr == nullptr || m_nodeSize < size)
+        if (0 == size)
         {
             return nullptr;
         }
-        m_head = ptr->m_next;
+                    
+        if (m_nodeSize < size)
+        {
+            return nullptr;
+        }
+
+        Node* ptr = m_head;
+        if (ptr != nullptr)
+        {
+            m_head = ptr->m_next;
+        }
         return ptr;
     }
 
@@ -133,7 +145,6 @@ class PoolAllocator
     */
     constexpr bool operator==(const PoolAllocator& other)
     {
-        // Since there are no copies of FreeListAllocator allowed, two equal objects must be the same object
         return this == &other;
     }
        
@@ -146,7 +157,7 @@ class PoolAllocator
         ::swap(m_nodeSize, other.m_nodeSize);
         ::swap(m_head, other.m_head);
     }
-    
+
     private:
 
     // Memory node
@@ -199,15 +210,12 @@ class FreeListAllocator
     */
     CXX14_CONSTEXPR FreeListAllocator(FreeListAllocator&& other)
     {
-        if (&other != this)
-        {
-            swap(other);
-        }        
+        operator=(forward<FreeListAllocator>(other));
     }
 
     /**
     @brief Copy assignment
-    There cannot be two copies of the one allocator managing the same memory
+    There must not be copies of the one allocator managing the same memory
     @param other Allocator to copy from
     */
     FreeListAllocator& operator=(const FreeListAllocator& other) = delete;
@@ -234,6 +242,11 @@ class FreeListAllocator
     */
     CXX14_CONSTEXPR void* allocate(const size_type size)
     {
+        if (0 == size)
+        {
+            return nullptr;
+        }
+
         // Find first memory node of sufficient size
         Node* prevNode = nullptr;
         Node* currNode = m_head;
@@ -530,6 +543,5 @@ uint8_t HeapAllocator<t_capacity>::s_memory[t_capacity];
 
 template <size_t t_capacity>
 FreeListAllocator HeapAllocator<t_capacity>::s_allocator(HeapAllocator<t_capacity>::s_memory, t_capacity);
-
 
 #endif
