@@ -22,51 +22,51 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <bits/move.h>
 #include <bits/new.h>
 #include <type_traits>
-#include <stdbool.h>
 #include <exception.h>
-#include <initializer_list>
 
+#include <initializer_list>
+#include <allocator.h>
+#include <stdbool.h>
 
 /**
 @brief Template class implementing a double-ended static queue of objects with compile-time fixed capacity
 @tparam T Type of deque elements
 */
-template <typename T, typename SizeT>
-class StaticDequeBase
+template <typename T, size_t t_capacity>
+class StaticDeque
 {
     public:
     
-    template <typename U>
+    template <bool t_const, bool t_reverse>
     class Iterator;
-    
-    template <typename U>
-    class ReverseIterator;
     
     using value_type             = T;
     using pointer                = T*;
     using const_pointer          = const T*;
     using reference              = T&;
     using const_reference        = const T&;
-    using size_type              = SizeT;
+    using size_type              = size_t;
     using difference_type        = ptrdiff_t;
-    using iterator               = Iterator<T>;
-    using const_iterator         = Iterator<const T>;
-    using reverse_iterator       = ReverseIterator<T>;
-    using const_reverse_iterator = ReverseIterator<const T>;
+    using iterator               = Iterator<false, false>;
+    using const_iterator         = Iterator<true, false>;
+    using reverse_iterator       = Iterator<false, true>;
+    using const_reverse_iterator = Iterator<true, true>;
 
-    template <typename U>
+    template <bool t_const, bool t_reverse>
     class Iterator
     {
-        public:
+        friend class StaticDeque<value_type, t_capacity>;
         
-        CXX20_CONSTEXPR Iterator(U* const base, const size_type bufferSize, const size_type idx) : m_base(base), m_bufferSize(bufferSize), m_idx(idx)
+        CXX20_CONSTEXPR Iterator(typename conditional<t_const, const StaticDeque<value_type, t_capacity>, StaticDeque<value_type, t_capacity>>::type* deque, const size_type idx) : m_deque(deque), m_idx(idx)
         {}
+        
+        public:
         
         CXX20_CONSTEXPR Iterator(const Iterator& rhs) = default;
         
         CXX20_CONSTEXPR Iterator& operator=(const Iterator& rhs)
         {
-            m_base = rhs.m_base;
+            m_deque = rhs.m_deque;
             m_idx = rhs.m_idx;
             return *this;
         }
@@ -75,120 +75,436 @@ class StaticDequeBase
         
         CXX14_CONSTEXPR Iterator& operator++()
         {
-            ++m_idx;
-            if (m_idx >= m_bufferSize)
+            if CXX17_CONSTEXPR(t_reverse)
             {
-                m_idx -= m_bufferSize;
+                --m_idx;
+            }
+            else
+            {
+                ++m_idx;
             }
             return *this;
         }
 
-        constexpr U& operator*() const
+        constexpr typename conditional<t_const, const value_type, value_type>::type& operator*() const
         {
-            return m_base[m_idx];
+            return m_deque->operator[](m_idx);
         }
         
-        constexpr bool operator!=(const Iterator& other)
+        constexpr bool operator!=(const Iterator& other) const
         {
             return m_idx != other.m_idx;
         }
 
-        protected:
-                
-        U* m_base = nullptr;
-        size_type m_bufferSize = 0;
+        private:
+
+        typename conditional<t_const, const StaticDeque<value_type, t_capacity>, StaticDeque<value_type, t_capacity>>::type* m_deque = nullptr;
         size_type m_idx = 0;
-    };
-
-    template <typename U>
-    class ReverseIterator : public Iterator<U>
-    {
-        public:
-        
-        CXX20_CONSTEXPR ReverseIterator(U* const base, const size_type bufferSize, const size_type idx) : Iterator<U>(base, bufferSize, idx)
-        {}
-
-        CXX20_CONSTEXPR ReverseIterator(const ReverseIterator& rhs) : Iterator<U>(rhs)
-        {}
-        
-        CXX20_CONSTEXPR ReverseIterator(const Iterator<U>& rhs) : Iterator<U>(rhs)
-        {}
-                
-        CXX20_CONSTEXPR ~ReverseIterator() = default;
-        
-        CXX14_CONSTEXPR ReverseIterator& operator++()
-        {
-            --Iterator<U>::m_idx;
-            if (Iterator<U>::m_idx >= Iterator<U>::m_bufferSize)
-            {
-                Iterator<U>::m_idx += Iterator<U>::m_bufferSize;
-            }
-            return *this;
-        }
     };
     
     /**
     @brief Constructor.
-    Constructs the container with count copies of elements with value value
+    Constructs an empty container
     */
-    CXX20_CONSTEXPR StaticDequeBase(T* ptr, size_type bufferSize) : m_data(ptr), m_bufferSize(bufferSize)
-    {}      
-           
+    CXX20_CONSTEXPR StaticDeque() = default;
+    
+    /**
+    @brief Constructor.
+    Constructs the container with count default-inserted instances of value_type. No copies are made.
+    @param count the size of the container
+    */
+    CXX20_CONSTEXPR explicit StaticDeque(const size_type count)
+    {
+        if (count > t_capacity)
+        {
+            throw_bad_alloc();
+        }
+
+        m_size = count;
+        for (; m_end < count; ++m_end)
+        {
+            new (m_data + m_end) value_type;
+        }
+    }
+    
+    /**
+    @brief Constructor.
+    Constructs the container with count default-inserted instances of value_type. No copies are made.
+    @param count the size of the container
+    @param value the value to initialize elements of the container with
+    */
+    CXX20_CONSTEXPR explicit StaticDeque(const size_type count, const value_type& value)
+    {
+        if (count > t_capacity)
+        {
+            throw_bad_alloc();
+        }
+
+        m_size = count;
+        for (; m_end < count; ++m_end)
+        {
+            new (m_data + m_end) value_type(value);
+        }
+    }
+    
+    /**
+    @brief Constructor.
+    Constructs the container with the contents of the range [first, last).
+    @param first, last the range to copy the elements from
+    */
+    template<class InputIt>
+    CXX20_CONSTEXPR StaticDeque(InputIt first, InputIt last)
+    {
+        // Prefer fewer re-allocations and copies and determine the size before allocating the memory
+        size_type count = 0;
+        InputIt firstTemp = first;
+        while (firstTemp != last)
+        {
+            ++count;
+            ++firstTemp;
+        }
+        
+        // Create the actual container
+        if (count > t_capacity)
+        {
+            throw_bad_alloc();
+        }
+
+        m_size = count;
+        for (; m_end < count; ++m_end)
+        {
+            new (m_data + m_end) value_type(*first);
+            ++first;
+        }
+    }
+    
     /**
     @brief move constructor.
-    Constructs the container with the contents of other using move semantics.
+    Copy constructor. Constructs the container with the copy of the contents of other.
+    @param other another container to be used as source to initialize the elements of the container with
     */
-    CXX20_CONSTEXPR StaticDequeBase(StaticDequeBase&& other)
+    CXX20_CONSTEXPR StaticDeque(const StaticDeque& other)
     {
-        swap(other);
+        const size_type count = other.size();
+        if (count > t_capacity)
+        {
+            throw_bad_alloc();
+        }
+        m_size = count;
+        m_end = count;
+        value_type* ptr = m_data;
+        for (const value_type& value : other)
+        {
+            new (ptr++) value_type(value);
+        }
     }
-        
+    
+    /**
+    @brief move constructor.
+    Move constructor. Constructs the container with the contents of other using move semantics. Allocator is obtained from the allocator belonging to other.
+    @param other another container to be used as source to initialize the elements of the container with
+    */
+    CXX20_CONSTEXPR StaticDeque(StaticDeque&& other)
+    {
+            const size_type count = other.size();
+        if (count > t_capacity)
+        {
+            throw_bad_alloc();
+        }
+            m_size = count;
+            m_end = count;
+            value_type* ptr = m_data;
+            for (value_type& value : other)
+            {
+                new (ptr++) value_type(move(value));
+            }
+    }
+    
+    /**
+    @brief Initializing constructor
+    Constructs the container with count default-inserted instances of value_type. No copies are made.
+    @param init initializer list to initialize the elements of the container with
+    */
+    CXX20_CONSTEXPR StaticDeque(std::initializer_list<value_type> init)
+    {
+        const size_type count = init.size();
+        if (count > t_capacity)
+        {
+            throw_bad_alloc();
+        }
+        m_size = count;
+        m_end = count;
+        value_type* ptr = m_data;
+        for (const value_type& value : init)
+        {
+           // TODO use move semantic instead of copying the node data
+           new (ptr++) value_type(value);
+        }
+    }
+
     /**
     @brief Destructor.
     Destructs the deque. The destructors of the elements are called and the used storage is deallocated.
     Note, that if the elements are pointers, the pointed-to objects are not destroyed.
     */
-    CXX20_CONSTEXPR ~StaticDequeBase()
+    CXX20_CONSTEXPR ~StaticDeque()
     {
         clear();
-    }    
-        
+    }
+    
+    /**
+    @brief assigns values to the container
+    Copy assignment operator. Replaces the contents with a copy of the contents of other.
+    @param other another container to use as data source
+    */
+    CXX14_CONSTEXPR StaticDeque& operator=(const StaticDeque& other)
+    {
+        if (this != &other)
+        {
+            assign(other.begin(), other.end());
+        }
+        return *this;
+    }
+
+    /**
+    @brief assigns values to the container
+    Move assignment operator. Replaces the contents with those of other using move semantics (i.e. the data in other is moved from other into this container).
+    other is in a valid but unspecified state afterwards.
+    @param other another container to use as data source
+    */
+    constexpr StaticDeque& operator=(StaticDeque&& other)
+    {
+        if (this != &other)
+        {
+            const size_type count = other.size();
+            if (count > t_capacity)
+            {
+                throw_bad_alloc();
+            }
+            clear();
+            iterator it = other.begin();
+            for (; m_end < count; ++m_end)
+            {
+                new (m_data + m_end) value_type(move(*it));
+                ++it;
+            }
+            m_size = m_end;
+        }
+        return *this;
+    }
+
+    /**
+    @brief assigns values to the container
+    Replaces the contents with those identified by initializer list init.
+    @param init initializer list to use as data source
+    */
+    CXX14_CONSTEXPR StaticDeque& operator=(std::initializer_list<value_type> init)
+    {
+        assign(init);
+        return *this;
+    }
+
     /**
     @brief Assignment
     Replaces the contents with count copies of value value
+    @param count the new size of the container
+    @param value the value to initialize elements of the container with
     */
-    CXX14_CONSTEXPR void assign(size_type count, const T& value = T())
+    CXX14_CONSTEXPR void assign(size_type count, const value_type& value = value_type())
     {
-        clear();
-        while (count--)
+        if (count > t_capacity)
         {
-            pushBack(value);
+            throw_bad_alloc();
         }
+        clear();
+        m_size = count;
+        for (; m_end < count; ++m_end)
+        {
+            new (m_data + m_end) value_type(value);
+        }            
     }
     
     /**
     @brief Assignment
-    Replaces the contents with copies of those in the range [first, last). The behavior is undefined if either argument is an iterator into *this.
+    Replaces the contents with copies of those in the range [first, last).
+    The behavior is undefined if either argument is an iterator into *this.
+    @param first, last the range to copy the elements from
     */
     // TODO restrict overload resolution
     template <typename InputIt>
     CXX14_CONSTEXPR void assign(InputIt first, InputIt last)
     {
-        clear();
-        while (first != last)
+        // Prefer fewer re-allocations and copies and determine the size before allocating the memory
+        size_type count = 0;
+        InputIt firstTemp = first;
+        while (firstTemp != last)
         {
-            pushBack(*first);
+            ++count;
+            ++firstTemp;
+        }
+        
+        // Create the actual container
+        if (count > t_capacity)
+        {
+            throw_bad_alloc();
+        }
+        clear();
+        for (; m_end < count; ++m_end)
+        {
+            new (m_data + m_end) value_type(*first);
             ++first;
         }
+        m_size = m_end;
     }
 
     /**
     @brief Assignment
-    Replaces the contents with the elements from the initializer list ilist.
+    Replaces the contents with the elements from the initializer list init.
+    @param init initializer list to copy the values from
     */
     CXX14_CONSTEXPR void assign(std::initializer_list<T> init)
     {
-        assign(init.begin(), init.end());
+        const size_type count = init.size();
+        if (count > t_capacity)
+        {
+            throw_bad_alloc();
+        }
+        clear();        
+        auto first = init.begin();
+        for (; m_end < count; ++m_end)
+        {
+            new (m_data + m_end) value_type(*first);
+            ++first;
+        }
+        m_size = m_end;
+    }
+
+    /**
+    @brief Get const iterator pointing first element of queue
+    @result begin const iterator
+    */
+    CXX14_CONSTEXPR const_iterator cbegin() const
+    {
+        return const_iterator(this, 0);
+    }
+    
+    /**
+    @brief Get const iterator pointing to first element of queue
+    @result begin const iterator
+    */
+    CXX14_CONSTEXPR const_iterator begin() const
+    {
+        return cbegin();
+    }
+    
+    /**
+    @brief Get iterator pointing to first element of queue
+    @result Begin iterator
+    */
+    CXX14_CONSTEXPR iterator begin()
+    {
+        return iterator(this, 0);
+    }
+    
+    /**
+    @brief Get const iterator pointing to last plus one element of queue
+    @result End const iterator
+    */
+    CXX14_CONSTEXPR const_iterator cend() const
+    {
+        return const_iterator(this, m_size);
+    }
+    
+    /**
+    @brief Get const iterator pointing to last plus one element of queue
+    @result End const iterator
+    */
+    CXX14_CONSTEXPR const_iterator end() const
+    {
+        return cend();
+    }
+    
+    /**
+    @brief Get iterator pointing to last plus one element of queue
+    @result End iterator
+    */
+    CXX14_CONSTEXPR iterator end()
+    {
+        return iterator(this, m_size);
+    }
+    
+    /**
+    @brief Get const iterator pointing to frontPos element of queue in reverse order
+    @result reverse begin const iterator
+    */
+    CXX14_CONSTEXPR const_reverse_iterator crbegin() const
+    {
+        return const_reverse_iterator(this, m_size-1);
+    }
+    
+    /**
+    @brief Get const iterator pointing to frontPos element of queue in reverse order
+    @result reverse begin const iterator
+    */
+    CXX14_CONSTEXPR const_reverse_iterator rbegin() const
+    {
+        return crbegin();
+    }
+    
+    /**
+    @brief Get iterator pointing to first element of queue in reverse order
+    @result reverse begin iterator
+    */
+    CXX14_CONSTEXPR reverse_iterator rbegin()
+    {
+        return reverse_iterator(this, m_size-1);
+    }
+    
+    /**
+    @brief Get const iterator pointing to last plus one element of queue in reverse order
+    @result reverse end const iterator
+    */
+    CXX14_CONSTEXPR const_reverse_iterator crend() const
+    {
+        return const_reverse_iterator(this, -1);
+    }
+    
+    /**
+    @brief Get const iterator pointing to last plus one element of queue in reverse order
+    @result reverse end const iterator
+    */
+    CXX14_CONSTEXPR const_reverse_iterator rend() const
+    {
+        return crend();
+    }
+    
+    /**
+    @brief Get iterator pointing to last plus one element of queue in reverse order
+    @result reverse end iterator
+    */
+    CXX14_CONSTEXPR reverse_iterator rend()
+    {
+        return reverse_iterator(this, -1);
+    }
+
+    /**
+    @brief Checks whether the container is empty
+    Checks if the container has no elements, i.e. whether begin() == end()
+    @result true if the container is empty, false otherwise
+    */
+    constexpr bool empty() const
+    {
+        return size() == 0;
+    }
+
+    /**
+    @brief Returns the number of elements
+    Returns the number of elements in the container
+    @result The number of elements in the container.
+    */
+    constexpr size_type size() const
+    {
+        return m_size;
     }
 
     /**
@@ -199,7 +515,12 @@ class StaticDequeBase
     */
     CXX14_CONSTEXPR reference operator[](const size_type pos)
     {
-        return m_data[incIndex(m_frontPos, pos)];
+        size_type idx = pos + m_front; // TODO check for integer overflow
+        if (idx >= t_capacity)
+        {
+            idx -= t_capacity;
+        }
+        return m_data[idx];
     }
     
     /**
@@ -210,7 +531,12 @@ class StaticDequeBase
     */
     CXX14_CONSTEXPR const_reference operator[](const size_type pos) const
     {
-        return m_data[incIndex(m_frontPos, pos)];
+        size_type idx = pos + m_front; // TODO check for integer overflow
+        if (idx >= t_capacity)
+        {
+            idx -= t_capacity;
+        }
+        return m_data[idx];
     }
     
     /**
@@ -255,7 +581,7 @@ class StaticDequeBase
     */
     CXX14_CONSTEXPR reference front()
     {
-        return m_data[m_frontPos];
+        return m_data[m_front];
     }
     
     /**
@@ -266,7 +592,7 @@ class StaticDequeBase
     */
     CXX14_CONSTEXPR const_reference front() const
     {
-        return m_data[m_frontPos];
+        return m_data[m_front];
     }
     
     /**
@@ -277,7 +603,9 @@ class StaticDequeBase
     */
     CXX14_CONSTEXPR reference back()
     {
-        return m_data[decIndex(m_endPos)];
+        size_type idx = m_end;
+        decIndex(idx);
+        return m_data[idx];
     }
     
     /**
@@ -288,140 +616,66 @@ class StaticDequeBase
     */
     CXX14_CONSTEXPR const_reference back() const
     {
-        return m_data[decIndex(m_endPos)];
-    }
-
-    /**
-    @brief Get const iterator pointing to frontPos element of queue
-    @result begin const iterator
-    */
-    CXX14_CONSTEXPR const_iterator cbegin() const
-    {
-        return const_iterator(m_data, m_bufferSize, m_frontPos);
+        size_type idx = m_end;
+        decIndex(idx);
+        return m_data[idx];
     }
     
     /**
-    @brief Get const iterator pointing to frontPos element of queue
-    @result begin const iterator
+    @brief Changes the number of elements stored
+    Resizes the container to contain count elements.
+    If the current size is greater than count, the container is reduced to its first count elements.
+    If the current size is less than count, additional default-inserted elements are appended
+    @param count new size of the container
     */
-    CXX14_CONSTEXPR const_iterator begin() const
+    CXX14_CONSTEXPR void resize(const size_type count)
     {
-        return cbegin();
-    }
-    
-    /**
-    @brief Get iterator pointing to frontPos element of queue
-    @result Begin iterator
-    */
-    CXX14_CONSTEXPR iterator begin()
-    {
-        return iterator(m_data, m_bufferSize, m_frontPos);
-    }
-    
-    /**
-    @brief Get const iterator pointing to last plus one element of queue
-    @result End const iterator
-    */
-    CXX14_CONSTEXPR const_iterator cend() const
-    {
-        return const_iterator(m_data, m_bufferSize, m_endPos);
-    }
-    
-    /**
-    @brief Get const iterator pointing to last plus one element of queue
-    @result End const iterator
-    */
-    CXX14_CONSTEXPR const_iterator end() const
-    {
-        return cend();
-    }
-    
-    /**
-    @brief Get iterator pointing to last plus one element of queue
-    @result End iterator
-    */
-    CXX14_CONSTEXPR iterator end()
-    {
-        return iterator(m_data, m_bufferSize, m_endPos);
-    }
-    
-    /**
-    @brief Get const iterator pointing to frontPos element of queue
-    @result begin const iterator
-    */
-    CXX14_CONSTEXPR const_reverse_iterator crbegin() const
-    {
-        return const_reverse_iterator(m_data, m_bufferSize, decIndex(m_endPos));
-    }
-    
-    /**
-    @brief Get const iterator pointing to frontPos element of queue
-    @result begin const iterator
-    */
-    CXX14_CONSTEXPR const_iterator rbegin() const
-    {
-        return crbegin();
-    }
-    
-    /**
-    @brief Get iterator pointing to frontPos element of queue
-    @result Begin iterator
-    */
-    CXX14_CONSTEXPR reverse_iterator rbegin()
-    {
-        return reverse_iterator(m_data, m_bufferSize, decIndex(m_endPos));
-    }
-    
-    /**
-    @brief Get const iterator pointing to last plus one element of queue
-    @result End const iterator
-    */
-    CXX14_CONSTEXPR const_reverse_iterator crend() const
-    {
-        return const_reverse_iterator(m_data, m_bufferSize, decIndex(m_frontPos));
-    }
-    
-    /**
-    @brief Get const iterator pointing to last plus one element of queue
-    @result End const iterator
-    */
-    CXX14_CONSTEXPR const_reverse_iterator rend() const
-    {
-        return crend();
-    }
-    
-    /**
-    @brief Get iterator pointing to last plus one element of queue
-    @result End iterator
-    */
-    CXX14_CONSTEXPR reverse_iterator rend()
-    {
-        return reverse_iterator(m_data, m_bufferSize, decIndex(m_frontPos));
-    }
-
-    /**
-    @brief Checks whether the container is empty
-    Checks if the container has no elements, i.e. whether begin() == end()
-    @result true if the container is empty, false otherwise
-    */
-    constexpr bool empty() const
-    {
-        return (m_frontPos == m_endPos);
-    }
-
-    /**
-    @brief Returns the number of elements
-    Returns the number of elements in the container
-    @result The number of elements in the container.
-    */
-    constexpr size_type size() const
-    {
-        size_type nofElements = m_endPos - m_frontPos;
-        if (nofElements > m_bufferSize)
+        if (count > t_capacity)
         {
-            nofElements += m_bufferSize;
+            throw_bad_alloc();
         }
-        return nofElements;
+            
+        // Add new elements until count is reached
+        while (m_size < count)
+        {
+            ++m_size;
+            new (m_data + m_end) value_type;
+            incIndex(m_end);
+        }
+            
+        // Delete elements until count is reached
+        while (m_size > count)
+        {
+            popBack();
+        }
+    }
+    
+    /**
+    @brief Changes the number of elements stored
+    Resizes the container to contain count elements.
+    If the current size is greater than count, the container is reduced to its first count elements.
+    If the current size is less than count, additional copies of value are appended.
+    @param count new size of the container
+    @param value the value to initialize the new elements with
+    */
+    CXX14_CONSTEXPR void resize(const size_type count, const value_type& value)
+    {
+        if (count > t_capacity)
+        {
+            throw_bad_alloc();
+        }
+           
+        // Add new elements until count is reached
+        while (m_size < count)
+        {
+            pushBack(value);
+        }
+            
+        // Delete elements until count is reached
+        while (m_size > count)
+        {
+            popBack();
+        }
     }
 
     /**
@@ -431,29 +685,13 @@ class StaticDequeBase
     */
     CXX14_CONSTEXPR void clear()
     {
-        while (!empty())
+        for (value_type& value : *this)
         {
-            popFront();
+            value.~value_type();
         }
-        m_frontPos = 0;
-        m_endPos = 0;
-    }
-
-   /**
-    @brief Adds an element to the end
-    Appends the given element value to the end of the container. The new element is initialized as a copy of value.
-    @param value The value of the element to append
-    */
-    CXX14_CONSTEXPR void pushBack(const T & value)
-    {
-        if (full())
-        {
-            throw_length_error();
-        }
-        
-        const size_type endPos = m_endPos;
-        m_endPos = incIndex(endPos);
-        new (m_data + endPos) T(value);
+        m_front = 0;
+        m_end = 0;
+        m_size = 0;
     }
 
     /**
@@ -461,16 +699,33 @@ class StaticDequeBase
     Appends the given element value to the end of the container. The new element is initialized as a copy of value.
     @param value The value of the element to append
     */
-    CXX14_CONSTEXPR void pushBack(T&& value)
+    CXX14_CONSTEXPR void pushBack(const value_type& value)
     {
         if (full())
         {
-            throw_length_error();
+            throw_bad_alloc();
         }
         
-        const size_type endPos = m_endPos;
-        m_endPos = incIndex(endPos);
-        new (m_data + endPos) T(forward<T>(value));
+        ++m_size;
+        new (m_data + m_end) value_type(value);
+        incIndex(m_end);
+    }
+
+    /**
+    @brief Adds an element to the end
+    Appends the given element value to the end of the container. The new element is initialized as a copy of value.
+    @param value The value of the element to append
+    */
+    CXX14_CONSTEXPR void pushBack(value_type&& value)
+    {
+        if (full())
+        {
+            throw_bad_alloc();
+        }
+        
+        ++m_size;
+        new (m_data + m_end) value_type(forward<value_type>(value));
+        incIndex(m_end);
     }
 
     /**
@@ -485,12 +740,13 @@ class StaticDequeBase
     {
         if (full())
         {
-            throw_length_error();
+            throw_bad_alloc();
         }
 
-        const size_type endPos = m_endPos;
-        m_endPos = incIndex(endPos);
-        return *new (m_data + endPos) T(forward<Args>(args)...);
+        ++m_size;
+        value_type* newElem = new (m_data + m_end) value_type(forward<Args>(args)...);
+        incIndex(m_end);
+        return *newElem;
     }
 
     /**
@@ -498,30 +754,27 @@ class StaticDequeBase
     */
     CXX14_CONSTEXPR void popBack()
     {
-        if (!empty())
-        {
-            const size_type endPos = decIndex(m_endPos);
-            (m_data + endPos)->~T();
-            m_endPos = endPos;
-        }
+        --m_size;
+        decIndex(m_end);
+        (m_data + m_end)->~value_type();
     }
-            
+    
     /**
     @brief Inserts an element to the beginning
     Prepends the given element value to the beginning of the container.
     All iterators, including the past-the-end iterator, are invalidated. No references are invalidated.
     @param value the value of the element to prepend
     */
-    CXX14_CONSTEXPR void pushFront(const T & value)
+    CXX14_CONSTEXPR void pushFront(const value_type& value)
     {
         if (full())
         {
-            throw_length_error();
+            throw_bad_alloc();
         }
         
-        const size_type frontPos =  decIndex(m_frontPos);
-        m_frontPos = frontPos;
-        new (m_data + frontPos) T(value);
+        ++m_size;
+        decIndex(m_front);
+        new (m_data + m_front) value_type(value);
     }
 
     /**
@@ -530,16 +783,16 @@ class StaticDequeBase
     All iterators, including the past-the-end iterator, are invalidated. No references are invalidated.
     @param value the value of the element to prepend
     */
-    CXX14_CONSTEXPR void pushFront(T&& value)
+    CXX14_CONSTEXPR void pushFront(value_type&& value)
     {
         if (full())
         {
-            throw_length_error();
+            throw_bad_alloc();
         }
         
-        const size_type frontPos = decIndex(m_frontPos);
-        m_frontPos = frontPos;
-        new (m_data + frontPos) T(forward<T>(value));
+        ++m_size;
+        decIndex(m_front);
+        new (m_data + m_front) value_type(forward<T>(value));
     }
 
     /**
@@ -554,12 +807,12 @@ class StaticDequeBase
     {
         if (full())
         {
-            throw_length_error();
+            throw_bad_alloc();
         }
 
-        const size_type frontPos = decIndex(m_frontPos);
-        m_frontPos = frontPos;
-        return *new (m_data + frontPos) T(forward<Args>(args)...);
+        ++m_size;
+        decIndex(m_front);
+        return *new (m_data + m_front) value_type(forward<Args>(args)...);
     }
     
     /**
@@ -571,237 +824,40 @@ class StaticDequeBase
     */
     CXX14_CONSTEXPR void popFront()
     {
-        if (!empty())
-        {
-            const size_type frontPos = m_frontPos;
-            (m_data + frontPos)->~T();
-            m_frontPos = incIndex(frontPos);
-        }        
-    }    
-    
-    /**
-    @brief Changes the number of elements stored
-    Resizes the container to contain count elements.
-    If the current size is greater than count, the container is reduced to its first count elements.
-    If the current size is less than count, additional default-inserted elements are appended
-    @param count new size of the container
-    */
-    CXX14_CONSTEXPR void resize(const size_type count)
-    {
-        if (count > capacity())
-        {
-            throw_length_error();
-        }
-        
-        while (count < size())
-        {
-            popBack();
-        }
-        
-        while (count > size())
-        {
-            emplaceBack();
-        }
+        --m_size;
+        (m_data + m_front)->~value_type();
+        incIndex(m_front);
     }
-    
-    /**
-    @brief Changes the number of elements stored
-    Resizes the container to contain count elements.
-    If the current size is greater than count, the container is reduced to its first count elements.
-    If the current size is less than count, additional copies of value are appended.
-    @param count new size of the container
-    @param value the value to initialize the new elements with
-    */
-    CXX14_CONSTEXPR void resize(const size_type count, const value_type& value)
-    {
-        if (count > capacity())
-        {
-            throw_length_error();
-        }
+       
+    private:
         
-        while (count < size())
-        {
-            popBack();
-        }
-        
-        while (count > size())
-        {
-            emplaceBack(value);
-        }
-    }
-    
-    protected:
-    
-    /**
-    @brief Swaps the contents
-    Exchanges the contents of the container with those of other.
-    All iterators and references remain valid. The past-the-end iterator is invalidated.
-    */
-    CXX14_CONSTEXPR void swap(StaticDequeBase& other)
+    constexpr void incIndex(size_type& idx) const
     {
-        ::swap(m_data, other.m_data);
-        ::swap(m_bufferSize, other.m_bufferSize);
-        ::swap(m_frontPos, other.m_frontPos);
-        ::swap(m_endPos, other.m_endPos);
+        if (++idx == t_capacity)
+        {
+            idx = 0;
+        }
     }
 
-    private:
+    constexpr void decIndex(size_type& idx) const
+    {
+        if (idx == 0)
+        {
+            idx = t_capacity;
+        }
+        --idx;
+    }
 
     constexpr bool full() const
     {
-        return (m_frontPos == incIndex(m_endPos));
+        return m_size == t_capacity;
     }
     
-    // Increment and roll over index
-    constexpr size_type incIndex(size_type index, const size_type increment = 1) const 
-    {
-        index += increment;
-        while (index >= m_bufferSize)
-        {
-            index -= m_bufferSize;
-        }
-        return index;
-    }
-
-    // Decrement and roll over index
-    constexpr size_type decIndex(size_type index, const size_type decrement = 1) const
-    {
-        index -= decrement;
-        while (index >= m_bufferSize)
-        {
-            index +=m_bufferSize;
-        }
-        return index;
-    }
-
-    constexpr size_type capacity() const
-    {
-        return m_bufferSize-1;
-    }
-
-    T* m_data;
-    size_type m_bufferSize;
-    size_type m_frontPos = 0;
-    size_type m_endPos = 0;
-};
-
-template <typename T, size_t t_capacity>
-class StaticDeque : public StaticDequeBase<T, typename DownCast<t_capacity+1>::type>
-{
-    using size_type = typename DownCast<t_capacity+1>::type;
-    static constexpr size_type s_bufferSize = t_capacity + 1;
-        
-    public:
-    
-    /**
-    @brief Default constructor.
-    Constructs an empty container
-    */
-    CXX20_CONSTEXPR StaticDeque() : StaticDequeBase<T, size_type>(reinterpret_cast<T*>(&m_data[0]), s_bufferSize)
-    {}
-    
-    /**
-    @brief Constructor.
-    Constructs the container with count copies of elements with value value
-    */
-    CXX20_CONSTEXPR StaticDeque(size_type count, const T& value = T()) : StaticDequeBase<T, size_type>(reinterpret_cast<T*>(&m_data[0]), s_bufferSize)
-    {
-        StaticDequeBase<T, size_type>::assign(count, value);
-    }
-    
-    /**
-    @brief Constructor.
-    Constructs the container with the contents of the range [first, last)
-    */
-    // TODO restrict overload resolution
-    template <typename InputIt>
-    CXX20_CONSTEXPR StaticDeque(InputIt first, InputIt last) : StaticDequeBase<T, size_type>(reinterpret_cast<T*>(&m_data[0]), s_bufferSize)
-    {
-        StaticDequeBase<T, size_type>::assign(first, last);
-    }
-    
-    /**
-    @brief Copy constructor.
-    Constructs the container with the copy of the contents of other
-    */
-    CXX20_CONSTEXPR StaticDeque(const StaticDeque& other) : StaticDeque(other.begin(), other.end())
-    {}
-    
-    /**
-    @brief move constructor.
-    Constructs the container with the contents of other using move semantics.
-    */
-    CXX20_CONSTEXPR StaticDeque(StaticDeque&& other) : StaticDequeBase<T, size_type>(reinterpret_cast<T*>(&m_data[0]), s_bufferSize)
-    {
-        swap(other);
-    }
-    
-    /**
-    @brief Copy constructor.
-    Constructs the container with the contents of the initializer list init
-    */
-    CXX20_CONSTEXPR StaticDeque(std::initializer_list<T> init) : StaticDeque(init.begin(), init.end())
-    {}    
-    
-       /**
-    @brief Copy assignment operator
-    Replaces the contents with a copy of the contents of other.
-    */
-    CXX14_CONSTEXPR StaticDeque& operator=(const StaticDeque& other)
-    {
-        for (const T& t : other)
-        {
-            StaticDequeBase<T, size_type>::pushBack(t);
-        }
-        
-        return *this;
-    }
-
-    /**
-    @brief Move assignment operator
-    Replaces the contents with those of other using move semantics (i.e. the data in other is moved from other into this container).
-    */
-    constexpr StaticDeque& operator=(StaticDeque&& other)
-    {
-        swap(other);
-        return *this;
-    }
-
-    /**
-    @brief Copy assignment operator
-    Replaces the contents with those identified by initializer list ilist.
-    */
-    CXX14_CONSTEXPR StaticDeque& operator=(std::initializer_list<T> ilist)
-    {
-        StaticDequeBase<T, size_type>::assign(ilist);
-        return *this;
-    }
-    
-    /**
-    @brief Returns the maximum possible number of elements
-    Returns the maximum number of elements the container is able to hold due to system or library implementation limitations
-    @result Maximum number of elements.
-    */
-    constexpr typename DownCast<t_capacity+1>::type max_size() const
-    {
-        return DownCast<t_capacity+1>::value-1;
-    }
-
-    /**
-    @brief Swaps the contents
-    Exchanges the contents of the container with those of other.
-    All iterators and references remain valid. The past-the-end iterator is invalidated.
-    */
-    CXX14_CONSTEXPR void swap(StaticDeque& other)
-    {
-        //::swap(m_allocator, other.m_allocator);
-        StaticDequeBase<T, size_type>::swap(other);
-    }
-
-
-    private:
-    
-    char m_data[s_bufferSize * sizeof(T)];
+    uint8_t m_buffer[t_capacity * sizeof(value_type)];
+    value_type* m_data = reinterpret_cast<value_type*>(m_buffer);
+    size_type m_size = 0;
+    size_type m_front = 0;
+    size_type m_end = 0;
 };
 
 
