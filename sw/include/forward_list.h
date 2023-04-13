@@ -118,7 +118,7 @@ class ForwardList
     @param value the value to initialize elements of the container with
     @param allocator allocator to use for all memory allocations of this container
     */
-    CXX14_CONSTEXPR explicit ForwardList(size_type count, const value_type& value, const Allocator& allocator = Allocator()) : m_allocator(allocator)
+    CXX14_CONSTEXPR ForwardList(size_type count, const value_type& value, const Allocator& allocator = Allocator()) : m_allocator(allocator)
     {
         resize(count, value);
     }
@@ -129,7 +129,7 @@ class ForwardList
     @param count the size of the container
     @param allocator allocator to use for all memory allocations of this container
     */
-    CXX14_CONSTEXPR explicit ForwardList(size_type count, const Allocator& allocator = Allocator()) : m_allocator(allocator)
+    CXX14_CONSTEXPR ForwardList(size_type count, const Allocator& allocator = Allocator()) : m_allocator(allocator)
     {
         resize(count);
     }
@@ -141,7 +141,7 @@ class ForwardList
     @param allocator allocator to use for all memory allocations of this container
     */
     template< class InputIt >
-    ForwardList(InputIt first, InputIt last, const Allocator& allocator = Allocator()) : m_allocator(allocator)
+    CXX14_CONSTEXPR ForwardList(InputIt first, InputIt last, const Allocator& allocator = Allocator()) : m_allocator(allocator)
     {
         insertAfter(cbeforeBegin(), first, last);
     }
@@ -152,7 +152,7 @@ class ForwardList
     @param other another container to be used as source to initialize the elements of the container with
     @param allocator allocator to use for all memory allocations of this container
     */
-    constexpr explicit ForwardList(const ForwardList& other, const Allocator& allocator = Allocator()) : ForwardList(other.begin(), other.end(), allocator)
+    CXX14_CONSTEXPR ForwardList(const ForwardList& other, const Allocator& allocator = Allocator()) : ForwardList(other.begin(), other.end(), allocator)
     {}
     
     /**
@@ -161,7 +161,7 @@ class ForwardList
     @param init initializer list to initialize the elements of the container with
     @param allocator allocator to use for all memory allocations of this container
     */
-    constexpr explicit ForwardList(std::initializer_list<value_type> init, const Allocator& allocator = Allocator()) : ForwardList(init.begin(), init.end(), allocator)
+    CXX14_CONSTEXPR ForwardList(std::initializer_list<value_type> init, const Allocator& allocator = Allocator()) : ForwardList(init.begin(), init.end(), allocator)
     {}
     
     /**

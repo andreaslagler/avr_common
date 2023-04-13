@@ -29,8 +29,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdbool.h>
 
 /**
-@brief Template class implementing a double-ended static queue of objects with compile-time fixed capacity
+@brief Template class implementing a double-ended queue of objects
 @tparam T Type of deque elements
+@tparam Allocator allocator class to use for all memory allocations of this container
 */
 template <typename T, typename Allocator = HeapAllocator<>>
 class Deque
