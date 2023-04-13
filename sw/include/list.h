@@ -174,10 +174,8 @@ class List
     @param other another container to be used as source to initialize the elements of the container with
     @param allocator allocator to use for all memory allocations of this container
     */
-    constexpr explicit List(const List& other, const Allocator& allocator = Allocator()) : List(other.begin(), other.end(), allocator)
-    {
-        
-    }
+    constexpr List(const List& other, const Allocator& allocator = Allocator()) : List(other.begin(), other.end(), allocator)
+    {}
     
     /**
     @brief constructs the List
@@ -185,7 +183,7 @@ class List
     @param init initializer list to initialize the elements of the container with
     @param allocator allocator to use for all memory allocations of this container
     */
-    constexpr explicit List(std::initializer_list<value_type> init, const Allocator& allocator = Allocator()) : List(init.begin(), init.end(), allocator)
+    constexpr List(std::initializer_list<value_type> init, const Allocator& allocator = Allocator()) : List(init.begin(), init.end(), allocator)
     {}
     
     /**
