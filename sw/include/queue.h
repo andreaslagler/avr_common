@@ -306,7 +306,7 @@ public:
     Appends the given element value to the end of the container. The new element is initialized as a copy of value.
     @param value The value of the element to append
     */
-    constexpr void push(const value_type& value)
+    CXX14_CONSTEXPR void push(const value_type& value)
     {
         m_container.pushBack(value);
     }
@@ -316,7 +316,7 @@ public:
     Appends the given element value to the end of the container using move semantics
     @param value The value of the element to append
     */
-    constexpr void push(value_type&& value)
+    CXX14_CONSTEXPR void push(value_type&& value)
     {
         m_container.pushBack(forward<value_type>(value));
     }
@@ -328,7 +328,7 @@ public:
     @param arguments to forward to the constructor of the element
     */
     template <typename  ... Args>
-    constexpr reference emplace(Args&& ... args)
+    CXX14_CONSTEXPR reference emplace(Args&& ... args)
     {
         return m_container.emplaceBack(forward<Args>(args)...);
     }
@@ -337,7 +337,7 @@ public:
     @brief Removes the front element
     Removes an element from the front of the queue
     */
-    constexpr void pop()
+    CXX14_CONSTEXPR void pop()
     {
         m_container.popFront();
     }
@@ -659,7 +659,7 @@ public:
     Appends the given element value to the container keeping the sort order according to used compare functor. The new element is initialized as a copy of value.
     @param value The value of the element to append
     */
-    constexpr void push(const value_type& value)
+    CXX14_CONSTEXPR void push(const value_type& value)
     {
         // TODO use binary heap ???
         const_iterator itCurrent = cbegin();
@@ -680,7 +680,7 @@ public:
     Appends the given element value to the container keeping the sort order according to used compare functor and using move semantics
     @param value The value of the element to append
     */
-    constexpr void push(value_type&& value)
+    CXX14_CONSTEXPR void push(value_type&& value)
     {
         // TODO use binary heap ???
         const_iterator itCurrent = cbegin();
@@ -703,7 +703,7 @@ public:
     @param args arguments to forward to the constructor of the element
     */
     template <typename  ... Args>
-    constexpr void emplace(Args&& ... args)
+    CXX14_CONSTEXPR void emplace(Args&& ... args)
     {
         push(value_type(forward<Args>(args)...));
     }
@@ -712,7 +712,7 @@ public:
     @brief Removes the top element
     Removes an element from the top of the queue
     */
-    constexpr void pop()
+    CXX14_CONSTEXPR void pop()
     {
         m_container.popFront();
     }
