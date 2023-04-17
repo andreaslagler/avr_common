@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2022  Andreas Lagler
+Copyright (C) 2023  Andreas Lagler
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,295 +18,155 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef SCHEDULER_H
 #define SCHEDULER_H
 
-#include <stdint.h>
-#include "list_node.h"
-#include "subject.h"
-#include "queue.h"
+#include <bits/c++config.h>
+#include <queue.h>
+#include <list.h>
+#include <static_list.h>
+#include <utility.h>
+
+#include <stdbool.h>
+#include <util/atomic.h>
 
 /**
-@brief This class implements a simple queue-based task scheduler.
-Scheduling and executing tasks can be made interrupt-safe using an Atomic class implementation as described below
-@tparam Atomic The Atomic template parameter is supposed to work as follows:
-- In the Atomic constructor, the ISR calling Scheduler::Clock() should be locked, so the queue access is atomic regarding interrupts.
-- In the Atomic destructor, the interrupt flags are restored to  allow  for regular operation.
-The implementation of Atomic (i.e. the access to interrupt enable flags) is device-specific.
-In case Atomic is void, the scheduler has zero overhead, but interrupt-safety must be ensured outside the scope of Scheduler.
-@tparam Argument Type of task callback argument
+@brief Implementation of a simple queue-based task scheduler.
+This implementation is interrupt-safe (i.e. call schedule() and execute() in application code and clock() in ISR)
+@tparam Task task type to be scheduled. Task must specify operator()(void) or equivalent
+@tparam Delay delay clock tick type
+@tparam t_capacity Maximum number of tasks scheduled at the same time. If t_capacity is 0, the actual maximum number of tasks is limited by available heap memory
 */
-template <typename _Delay, typename Atomic, typename Argument>
-class Scheduler;
-
-/**
-@brief Default scheduler class
-*/
-template <typename _Delay, typename Argument>
-class Scheduler<_Delay, void, Argument>
+template <typename Task, typename Delay, size_t t_capacity = 0>
+class Scheduler
 {
     public:
-
-    /**
-    @brief Scheduler delay data type
-    Scheduler clock resolution of 1 ms allows delay in the range of 1ms ... 1min
-    */
-    typedef _Delay Delay;
     
     /**
-    @brief The task class combines a linked list node for insertion into the scheduler queue and an observable subject, so it can notify an observer when executed
-    @todo Consider an abstract base class and dynamic polymorphism
+    @brief Schedule a task
+    If two tasks have the same delay, the task scheduled first will be executed first
+    @param task task to be scheduled
+    @param delay delay of task given in clock ticks
     */
-    class Task : public SingleLinkedNode<Task>, public Subject<Argument>
+    CXX14_CONSTEXPR void schedule(const Task& task, const Delay delay)
     {
-        public:
-
-        /**
-        @brief Default constructor
-        @param observer Callback for task execution
-        */
-        constexpr Task(typename Subject<Argument>::Observer observer, const Argument & argument) : Subject<Argument>(observer), m_argument(argument)
-        {}
-
-        /// @brief Task execution callback
-        constexpr void execute() const
-        {
-            Subject<Argument>::notifyObserver(m_argument);
-        }
-
-        protected:
-
-        // Allow the scheduler to alter the relative delay when scheduling tasks
-        friend class Scheduler;
+        ATOMIC_BLOCK(ATOMIC_FORCEON);
         
-        // Callback argument
-        Argument m_argument;
-
-        // Relative delay wrt previous task
-        Delay m_delay {0};
-    };
-
-    /**
-    @brief Move the scheduler clock forward by one tick, i.e. decrement the relative delay of the next scheduled task. Move task(s) with zero relative delay to execution queue.
-    */
-    void clock()
-    {
-        Task * task;
-        while (nullptr != (task = m_schedulerHead))
+        // Check delay
+        if (0 == delay)
         {
-            // Check if tasks are scheduled now, i.e. their delay is zero
-            if (0 == task->m_delay)
+            // Delay is 0 --> Append task to queue of due tasks
+            m_dueTasks.push(task);
+        }
+        else
+        {
+            // Schedule task
+            m_scheduledTasks.emplace(delay, task);
+        }
+        
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE);
+    }
+    
+    /**
+    @brief Execute next task
+    Execute next due task (if there is any)
+    @result true if a task has been executed, false otherwise
+    */
+    CXX14_CONSTEXPR bool execute()
+    {
+        ATOMIC_BLOCK(ATOMIC_FORCEON);
+
+        // Check if a task is due (atomic)
+        if (!m_dueTasks.empty())
+        {
+            // Get next task from queue (atomic)
+            Task& task = m_dueTasks.front();
+            
+            ATOMIC_BLOCK(ATOMIC_RESTORESTATE);
+            
+            // Execute the task, non-atomic
+            task();
+            
+            ATOMIC_BLOCK(ATOMIC_FORCEON);
+            
+            // Delete the task after execution (atomic)
+            m_dueTasks.pop();
+            
+            ATOMIC_BLOCK(ATOMIC_RESTORESTATE);
+            
+            // Indicate that a task has been executed
+            return true;
+        }
+        
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE);
+            
+        // Indicate that no task has been executed
+        return false;
+    }
+    
+    /**
+    @brief Clock the scheduler
+    Increase the scheduler clock by one clock tick. Move due tasks to the queue of due tasks. This method can be used as a callback for a timer interrupt, all operations ar non-atomic
+    */
+    CXX14_CONSTEXPR void clock()
+    {
+        // Check for scheduled tasks
+        if (!m_scheduledTasks.empty())
+        {
+            // Check delay of next task
+            ScheduledTask& task = m_scheduledTasks.top();
+            if (0 == (--task.first))
             {
-                // Move current task from scheduler queue to execution queue
-                m_schedulerHead = static_cast<Task*>(task->next());
-                m_executionQueue.push(*task);
+                // Task is due --> move task from queue of scheduled tasks to queue of due tasks
+                m_dueTasks.push(move(task.second));
+                m_scheduledTasks.pop();
+            }
+        }
+        
+        // Check for more scheduled tasks with same delay
+        while (!m_scheduledTasks.empty())
+        {
+            // Check delay of next task
+            ScheduledTask& task = m_scheduledTasks.top();
+            if (0 == task.first)
+            {
+                // Task is due --> move task from queue of scheduled tasks to queue of due tasks
+                m_dueTasks.push(move(task.second));
+                m_scheduledTasks.pop();
             }
             else
             {
-                // Decrement delay of next task
-                --task->m_delay;
+                // No more due tasks
                 break;
             }
         }
     }
     
-    /**
-    @brief Schedule task, i.e. insert task into scheduler queue according to its delay
-    @param task Task to be scheduled
-    @param delay Execution delay of the task in clock ticks
-    */
-    void schedule(Task & task, Delay delay)
+    private:
+    
+    using ScheduledTask = Pair<Delay,Task>;
+    
+    // Compare functor used to schedule tasks
+    struct Compare
     {
-        Task *pos = m_schedulerHead;
-        if (nullptr == pos)
+        CXX14_CONSTEXPR bool operator()(ScheduledTask& task, const ScheduledTask& nextTask)
         {
-            // Scheduler queue is empty --> queue current task directly
-            m_schedulerHead = &task;
-
-            // This will be the new tail anyway --> Append NULL
-            task.append(nullptr);
-        }
-        else if (delay < pos->m_delay)
-        {
-            // Current task has shorter delay than next scheduled task
-            // --> replace next scheduled task by current task
-            
-            // Adjust delay of the the replaced task
-            pos->m_delay -= delay;
-
-            // Append front to new node
-            task.append(pos);
-
-            // Replace head of the queue
-            m_schedulerHead = &task;
-        }
-        else
-        {
-            // Current task has longer (or same) delay than next scheduled task
-            // --> skip scheduled tasks according to their delay
-            Task * next = nullptr;
-            while (true)
+            if (task.first >= nextTask.first)
             {
-                // Decrease relative delay to previous task
-                delay -= pos->m_delay;
-
-                // Check next task in queue
-                next = static_cast<Task*>(pos->next());
-                if (nullptr != next)
-                {
-                    // End of queue not reached yet --> Check delay of next task
-                    if (delay >= next->m_delay)
-                    {
-                        // New task is scheduled after next --> Iterate to next task
-                        pos = next;
-                    }
-                    else
-                    {
-                        // Adjust delay of next task
-                        next->m_delay -= delay;
-                        break;
-                    }
-                }
-                else
-                {
-                    // End of queue reached --> break
-                    break;
-                }
+                // Decrease relative delay of task with respect to next task
+                task.first -= nextTask.first;
+                
+                // Schedule task AFTER nextTask
+                return false;
             }
-
-            // Insert new task between pos and next
-            task.append(next);
-            pos->append(&task);
+            
+            // Schedule task BEFORE nextTask
+            return true;
         }
-
-        // Finally, set the delay
-        task.m_delay = delay;
-    }
-
-
-    /**
-    @brief Execute next task in the execution queue
-    */
-    Task * executeNextTask()
-    {
-        Task * task = getNextTask();
-        if (nullptr != task)
-        {
-            task->execute();
-        }
-        return task;
-    }
-
-    protected:
-
-    // Get pointer to the first task in the execution queue (if available)
-    Task * getNextTask()
-    {
-        return static_cast<Task*>(m_executionQueue.pop());
-    }
+    };
     
-    private:
-
-    // Scheduler head. This points to the next scheduled task
-    Task * volatile m_schedulerHead;
+    // Queue of scheduled (i.e. delayed) tasks
+    PriorityQueue<ScheduledTask, typename conditional<t_capacity == 0, List<ScheduledTask>, StaticList<ScheduledTask, t_capacity>>::type, Compare> m_scheduledTasks;
     
-    // Queue of tasks ready for execution. Query into this queue to execute tasks
-    Queue<Task, true> m_executionQueue;
-};
-
-template <>
-class Scheduler<uint8_t, void, void>::Task : public SingleLinkedNode<Scheduler<uint8_t, void, void>::Task>, public Subject<void>
-{
-    public:
-
-    /**
-    @brief Default constructor
-    @param observer Callback for task execution
-    */
-    constexpr Task(typename Subject<void>::Observer observer) : Subject<void>(observer)
-    {}
-
-    /// @brief Task execution callback
-    constexpr void execute() const
-    {
-        Subject<void>::notifyObserver();
-    }
-
-    private:
-
-    // Allow the scheduler to alter the relative delay when scheduling tasks
-    friend class Scheduler;
-
-    // Relative delay wrt previous task
-    uint8_t m_delay {0};
-};
-
-template <>
-class Scheduler<uint16_t, void, void>::Task : public SingleLinkedNode<Scheduler<uint16_t, void, void>::Task>, public Subject<void>
-{
-    public:
-
-    /**
-    @brief Default constructor
-    @param observer Callback for task execution
-    */
-    constexpr Task(typename Subject<void>::Observer observer) : Subject<void>(observer)
-    {}
-
-    /// @brief Task execution callback
-    constexpr void execute() const
-    {
-        Subject<void>::notifyObserver();
-    }
-
-    private:
-
-    // Allow the scheduler to alter the relative delay when scheduling tasks
-    friend class Scheduler;
-
-    // Relative delay wrt previous task
-    uint16_t m_delay {0};
-};
-
-
-
-// Implementation
-template <typename _Delay, typename Atomic, typename Argument>
-class Scheduler : public Scheduler<_Delay, void, Argument>
-{
-    public:
-
-    /**
-    @brief Schedule task, i.e. insert task into scheduler queue according to its delay
-    @param task Task to be scheduled
-    @param delay Execution delay of the task in clock ticks
-    */
-    void schedule(typename Scheduler<_Delay, void, Argument>::Task & task, const typename Scheduler<_Delay, void, Argument>::Delay delay)
-    {
-        const Atomic atomic;
-        Scheduler<_Delay, void, Argument>::schedule(task, delay);
-    }
-
-    /**
-    @brief Execute next task in the execution queue
-    */
-    typename Scheduler<_Delay, void, Argument>::Task * executeNextTask()
-    {
-        typename Scheduler<_Delay, void, Argument>::Task * task = getNextTask();
-        if (nullptr != task)
-        {
-            task->execute();
-        }
-        return task;
-    }
-    
-    private:
-    
-    /**
-    @brief Get pointer to the first task in the execution queue (if available)
-    */
-    typename Scheduler<_Delay, void, Argument>::Task * getNextTask()
-    {
-        const Atomic atomic;
-        return Scheduler<_Delay, void, Argument>::getNextTask();
-    }
+    // Queue of due tasks
+    Queue<Task, typename conditional<t_capacity == 0, List<Task>, StaticList<Task, t_capacity>>::type> m_dueTasks;
 };
 
 #endif
