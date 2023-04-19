@@ -726,8 +726,4 @@ protected:
     container_type m_container;
 };
 
-
-
-
-
 #endif
