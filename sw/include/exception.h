@@ -42,4 +42,10 @@ The definition of this function is application specific
 */
 void throw_bad_alloc() __attribute__ ((noreturn, noinline));
 
+/**
+@brief Bad varitant access exception
+The definition of this function is application specific
+*/
+void throw_bad_variant_access() __attribute__ ((noreturn, noinline));
+
 #endif
