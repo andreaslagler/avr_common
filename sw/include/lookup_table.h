@@ -18,8 +18,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef LOOKUP_TABLE_H
 #define LOOKUP_TABLE_H
 
-#include "pair.h"
+#include <utility.h>
+
 #include <avr/pgmspace.h>
+
+
 #include "memcopy.h"
 
 /**
@@ -59,9 +62,9 @@ class SparseLUT
         // Overwrite elements given by arguments
         for (const auto & entry : entries)
         {
-            if (t_length > entry.first())
+            if (t_length > entry.first)
             {
-                m_data[entry.first()] = entry.second();
+                m_data[entry.first] = entry.second;
             }                
         }
     }
@@ -83,9 +86,9 @@ class SparseLUT
         // Overwrite elements given by arguments
         for (const auto & entry : entries)
         {
-            if (t_length > entry.first())
+            if (t_length > entry.first)
             {
-                ret.m_data[entry.first()] = entry.second();
+                ret.m_data[entry.first] = entry.second;
             }
         }
         
