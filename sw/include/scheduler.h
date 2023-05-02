@@ -25,7 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <utility.h>
 
 #include <stdbool.h>
-#include <util/atomic.h>
+#include <atomic.h>
 
 /**
 @brief Implementation of a simple queue-based task scheduler.
@@ -47,21 +47,20 @@ class Scheduler
     */
     CXX14_CONSTEXPR void schedule(const Task& task, const Delay delay)
     {
-        ATOMIC_BLOCK(ATOMIC_FORCEON);
-        
-        // Check delay
-        if (0 == delay)
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
-            // Delay is 0 --> Append task to queue of due tasks
-            m_dueTasks.push(task);
-        }
-        else
-        {
-            // Schedule task
-            m_scheduledTasks.emplace(delay, task);
-        }
-        
-        ATOMIC_BLOCK(ATOMIC_RESTORESTATE);
+            // Check delay
+            if (0 == delay)
+            {
+                // Delay is 0 --> Append task to queue of due tasks
+                m_dueTasks.push(task);
+            }
+            else
+            {
+                // Schedule task
+                m_scheduledTasks.emplace(delay, task);
+            }
+        }        
     }
     
     /**
@@ -71,32 +70,35 @@ class Scheduler
     */
     CXX14_CONSTEXPR bool execute()
     {
-        ATOMIC_BLOCK(ATOMIC_FORCEON);
-
         // Check if a task is due (atomic)
-        if (!m_dueTasks.empty())
+        bool tasksDue = false;
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            tasksDue = !m_dueTasks.empty();
+        }
+        
+        if (tasksDue)
         {
             // Get next task from queue (atomic)
-            Task& task = m_dueTasks.front();
-            
-            ATOMIC_BLOCK(ATOMIC_RESTORESTATE);
+            Task* task = nullptr;            
+            ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+            {
+                task = &m_dueTasks.front();
+            }                
             
             // Execute the task, non-atomic
-            task();
-            
-            ATOMIC_BLOCK(ATOMIC_FORCEON);
+            task->operator()();            
             
             // Delete the task after execution (atomic)
-            m_dueTasks.pop();
-            
-            ATOMIC_BLOCK(ATOMIC_RESTORESTATE);
+            ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+            {
+                m_dueTasks.pop();
+            }            
             
             // Indicate that a task has been executed
             return true;
         }
         
-        ATOMIC_BLOCK(ATOMIC_RESTORESTATE);
-            
         // Indicate that no task has been executed
         return false;
     }
