@@ -87,7 +87,7 @@ class PotentiometerScannerSync
 };
 
 
-#include <functional>
+#include <functional.h>
 
 /**
 @brief Potentiometer scanner class scanning one or more potentiometers
@@ -145,7 +145,7 @@ class PotentiometerScannerAsync
     private:
     
     // Callback for ADC interrupt
-    static std::function<void()> s_callback;
+    static function<void()> s_callback;
     
     // Flag indicating continuous operation of potentiometer scanner
     static bool s_continue;
@@ -186,7 +186,7 @@ class PotentiometerScannerAsync
 };
 
 template <typename ... Potentiometers>
-std::function<void()> PotentiometerScannerAsync<Potentiometers...>::s_callback;
+function<void()> PotentiometerScannerAsync<Potentiometers...>::s_callback;
 
 template <typename ... Potentiometers>
 bool PotentiometerScannerAsync<Potentiometers...>::s_continue = false;

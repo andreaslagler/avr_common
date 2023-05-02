@@ -20,7 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <functional>
+#include <functional.h>
 
 /**
 @brief Driver class for a rotary encoder
@@ -62,14 +62,14 @@ class RotaryEncoder
     }
     
     static uint8_t s_currentSpeed;
-    static std::function<void(bool, uint8_t)> s_callback;
+    static function<void(bool, uint8_t)> s_callback;
 };
 
 template <typename PhaseAPin, typename PhaseBPin, bool t_polarity, uint8_t t_maxSpeed>
 uint8_t RotaryEncoder<PhaseAPin, PhaseBPin, t_polarity, t_maxSpeed>::s_currentSpeed = 1;
 
 template <typename PhaseAPin, typename PhaseBPin, bool t_polarity, uint8_t t_maxSpeed>
-std::function<void(bool, uint8_t)> RotaryEncoder<PhaseAPin, PhaseBPin, t_polarity, t_maxSpeed>::s_callback;
+function<void(bool, uint8_t)> RotaryEncoder<PhaseAPin, PhaseBPin, t_polarity, t_maxSpeed>::s_callback;
 
 /**
 @brief Driver class for a rotary encoder
@@ -102,11 +102,11 @@ class RotaryEncoder<PhaseAPin, PhaseBPin, t_polarity, 0>
 
     private:
     
-    static std::function<void(bool)> s_callback;
+    static function<void(bool)> s_callback;
 };
 
 template <typename PhaseAPin, typename PhaseBPin, bool t_polarity>
-std::function<void(bool)> RotaryEncoder<PhaseAPin, PhaseBPin, t_polarity, 0>::s_callback;
+function<void(bool)> RotaryEncoder<PhaseAPin, PhaseBPin, t_polarity, 0>::s_callback;
 
 
 

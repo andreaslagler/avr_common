@@ -24,7 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <bits/move.h>
 #include <exception.h>
 
-#include <type_traits>
+#include <type_traits.h>
 #include <utility.h>
 
 #if SINCE_CXX17

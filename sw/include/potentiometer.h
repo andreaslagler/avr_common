@@ -20,7 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <stdlib.h> // abs()
 #include <stdint.h>
-#include <functional>
+#include <functional.h>
 
 enum class PotentiometerDetent : uint8_t
 {
@@ -131,14 +131,14 @@ class Potentiometer : public PotentiometerBase<t_detent>
     private:
 
     // Callback for potentiometer value change
-    static std::function<void(uint8_t)> s_callback;
+    static function<void(uint8_t)> s_callback;
 
     static uint16_t s_lastAdcValue;
 };
 
 // Static initialization
 template <typename ADCPin, PotentiometerDetent t_detent>
-std::function<void(uint8_t)> Potentiometer<ADCPin, t_detent>::s_callback;
+function<void(uint8_t)> Potentiometer<ADCPin, t_detent>::s_callback;
 
 template <typename ADCPin, PotentiometerDetent t_detent>
 uint16_t Potentiometer<ADCPin, t_detent>::s_lastAdcValue = 0;

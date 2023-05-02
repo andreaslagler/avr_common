@@ -20,7 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <bits/c++config.h>
 #include <stddef.h> // size_t
-#include <type_traits> // DownCast
+#include <type_traits.h> // DownCast
 #include <bits/move.h>
 
 /**
