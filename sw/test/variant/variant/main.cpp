@@ -291,6 +291,33 @@ int main(void)
         T2::resetCounter();
         T3::resetCounter();
         T4::resetCounter();
+        TestVariant x(in_place_type_t<T0>(), 10);
+        TestVariant y(in_place_type_t<T1>(), 11);
+        TestVariant z(in_place_type_t<T0>(), 20);
+        testPassed &= z.index() == 0;
+        testPassed &= get<T0>(z).getValue() == 20;
+        z = x;
+        testPassed &= z.index() == 0;
+        testPassed &= get<T0>(z).getValue() == 10;
+        z = y;
+        testPassed &= z.index() == 1;
+        testPassed &= get<T1>(z).getValue() == 11;
+    }
+    testPassed &= T0::check(0,2,0,0,2);
+    testPassed &= T1::check(0,1,1,0,2);
+    testPassed &= T2::check(0,0,0,0,0);
+    testPassed &= T3::check(0,0,0,0,0);
+    testPassed &= T4::check(0,0,0,0,0);
+    allPassed &= test_assert("Copy assignment", testPassed);
+
+
+    {
+        testPassed = true;
+        T0::resetCounter();
+        T1::resetCounter();
+        T2::resetCounter();
+        T3::resetCounter();
+        T4::resetCounter();
         TestVariant x;
         using Type = T1;
         const uint8_t value = 42;
@@ -305,6 +332,32 @@ int main(void)
     testPassed &= T3::check(0,0,0,0,0);
     testPassed &= T4::check(0,0,0,0,0);
     allPassed &= test_assert("Copy assignment", testPassed);
+
+    {
+        testPassed = true;
+        T0::resetCounter();
+        T1::resetCounter();
+        T2::resetCounter();
+        T3::resetCounter();
+        T4::resetCounter();
+        TestVariant x(in_place_type_t<T0>(), 10);
+        TestVariant y(in_place_type_t<T1>(), 11);
+        TestVariant z(in_place_type_t<T0>(), 20);
+        testPassed &= z.index() == 0;
+        testPassed &= get<T0>(z).getValue() == 20;
+        z = move(x);
+        testPassed &= z.index() == 0;
+        testPassed &= get<T0>(z).getValue() == 10;
+        z = move(y);
+        testPassed &= z.index() == 1;
+        testPassed &= get<T1>(z).getValue() == 11;
+    }
+    testPassed &= T0::check(0,2,0,0,2);
+    testPassed &= T1::check(0,1,0,1,2);
+    testPassed &= T2::check(0,0,0,0,0);
+    testPassed &= T3::check(0,0,0,0,0);
+    testPassed &= T4::check(0,0,0,0,0);
+    allPassed &= test_assert("Move assignment", testPassed);
 
     {
         testPassed = true;

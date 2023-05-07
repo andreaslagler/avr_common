@@ -315,14 +315,81 @@ class Variant
     
     /**
     @brief assigns a variant
+    Copy assignment of other variant
+    */
+    constexpr Variant& operator=(const Variant& other)
+    {
+        if (other.m_index == m_index)
+        {
+            // This and other are holding the same alternative --> copy-assign value if not valueless
+            if (m_index != static_cast<size_type>(-1))
+            {
+                copyAssign(other);
+            }
+        }
+        else
+        {
+            // This and other are not holding the same alternative
+            // Destroy value if this not valueless
+            if (m_index != static_cast<size_type>(-1))
+            {
+                destroy();
+            }
+            
+            m_index = other.m_index;
+            
+            // Copy-construct value if other is not valueless
+            if (m_index != static_cast<size_type>(-1))
+            {
+                copyConstruct(other);
+            }
+        }
+        return *this;
+    }
+    
+    /**
+    @brief assigns a variant
+    Move assignment of other variant
+    */
+    constexpr Variant& operator=(Variant&& other)
+    {
+        if (other.m_index == m_index)
+        {
+            // This and other are holding the same alternative --> move-assign value if not valueless
+            if (m_index != static_cast<size_type>(-1))
+            {
+                moveAssign(forward<Variant>(other));
+            }
+        }
+        else
+        {
+            // This and other are not holding the same alternative
+            // Destroy value if this not valueless
+            if (m_index != static_cast<size_type>(-1))
+            {
+                destroy();
+            }
+            
+            m_index = other.m_index;
+            
+            // Move-construct value if other is not valueless
+            if (m_index != static_cast<size_type>(-1))
+            {
+                moveConstruct(forward<Variant>(other));
+            }
+        }
+        return *this;
+    }
+    
+    /**
+    @brief assigns a variant
     Converting assignment.
     If variant already holds a value of alternative type Type, copy-assigns the contained value to value.
     If variant does not already hold a value of alternative type Type, copy-constructs the contained value from value.
     */
     template <typename Type>
-    constexpr Variant& operator=(const Type& value)
+    constexpr enable_if_t<isPartOfV<remove_cvref_t<Type>>, Variant&> operator=(const Type& value)
     {
-        static_assert(isPartOfV<remove_cvref_t<Type>>, "Invalid type");
         constexpr size_t newId = typeToIndexV<Type>;
         if (newId != m_index)
         {
@@ -343,9 +410,8 @@ class Variant
     If variant does not already hold a value of alternative type Type, move-constructs the contained value from value.
     */
     template <typename Type>
-    constexpr Variant& operator=(Type&& value)
+    constexpr enable_if_t<isPartOfV<remove_cvref_t<Type>>, Variant&> operator=(Type&& value)
     {
-        static_assert(isPartOfV<remove_cvref_t<Type>>, "Invalid type");
         constexpr size_t newId = typeToIndexV<remove_cvref_t<Type>>;
         if (newId != m_index)
         {
@@ -468,6 +534,50 @@ class Variant
         // Use destruction functor as visitor
         visit(move(Destructor()), *this);
         m_index = -1;
+    }
+
+    // Copy-assignment functor
+    struct CopyAssignment
+    {
+        CopyAssignment(const Variant& other) : m_other(other)
+        {}
+        
+        template <typename Type>
+        void operator()(Type& t)
+        {
+            t = ::get<typeToIndexV<Type>>(m_other);
+        }
+        
+        const Variant& m_other;
+    };
+
+    // Copy-assign to other
+    constexpr void copyAssign(const Variant& other)
+    {
+        // Use destruction functor as visitor
+        visit(move(CopyAssignment(other)), *this);
+    }
+
+    // Move-assignment functor
+    struct MoveAssignment
+    {
+        MoveAssignment(Variant&& other) : m_other(forward<Variant>(other))
+        {}
+    
+        template <typename Type>
+        void operator()(Type& t)
+        {
+            t = move(::get<typeToIndexV<Type>>(m_other));
+        }
+    
+        Variant&& m_other;
+    };
+
+    // Move-assign form other
+    constexpr void moveAssign(Variant&& other)
+    {
+        // Use destruction functor as visitor
+        visit(move(MoveAssignment(forward<Variant>(other))), *this);
     }
 
     // Access to underlying buffer        
