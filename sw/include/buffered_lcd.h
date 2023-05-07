@@ -114,22 +114,9 @@ class LCDAlphanumericBuffered
     @brief Put terminated string to LCD
     @param string Zero-terminated string to displayed on LCD (stored in RAM)
     */
-    static constexpr void put(const char * string)
+    static constexpr void put(const String<>& str)
     {
-        while (*string != 0)
-        {
-            putc(*string++);
-        }
-    }
-
-    /**
-    @brief Put terminated string to LCD
-    @param string Zero-terminated string to displayed on LCD (stored in RAM)
-    */
-    template <uint8_t t_size>
-    static constexpr void put(const String<t_size>& string)
-    {
-        for (const auto& character : string)
+        for (const auto& character : str)
         {
             if (character != 0)
             {
@@ -150,20 +137,6 @@ class LCDAlphanumericBuffered
             {
                 putc(character);
             }            
-        }
-    }
-
-    /**
-    @brief Put terminated string stored in PROGMEM to LCD
-    @param string Zero-terminated string to displayed on LCD (stored in PROG_MEM)
-    */
-    static void putsP(const char * string)
-    {
-        char character = pgm_read_byte(string++);
-        while (character != 0)
-        {
-            putc(character);
-            character = pgm_read_byte(string++);
         }
     }
 
