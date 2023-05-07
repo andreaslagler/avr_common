@@ -21,6 +21,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <avr/io.h>
 #include <stdint.h>
 
+#pragma GCC diagnostic push
+// There seems to be a glitch/bug with this warning
+#pragma GCC diagnostic ignored "-Warray-bounds" 
 
 /**
 @brief Template class for accessing a memory-mapped I/O register specified by a data type and address
@@ -199,5 +202,7 @@ class BitInRegister
         static_assert(t_bit <= (sizeof(typename Register::Type) * 8 - 1), "Invalid configuration: Bit index out of range!");
     }
 };
+
+#pragma GCC diagnostic pop
 
 #endif
