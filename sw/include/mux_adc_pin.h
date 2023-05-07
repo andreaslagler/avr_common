@@ -48,7 +48,7 @@ class MuxADCPin : public ADCPin
         __super::startConversion();
     }
     
-    using __super::readResult;
+    using __super::read;
     using __super::wait;
 };
 

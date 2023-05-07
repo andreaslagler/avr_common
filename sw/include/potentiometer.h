@@ -74,7 +74,7 @@ class Potentiometer : public PotentiometerBase<t_detent>
     static constexpr void updateAsync()
     {
         // Read ADC value
-        const uint16_t adcValue = ADCPin:: template readResult<uint16_t>();
+        const uint16_t adcValue = ADCPin:: template read<uint16_t>();
         
         // Do not update to the same pot value
         const uint8_t potValue = __super::convertAdcToPotValue(adcValue);
@@ -96,7 +96,7 @@ class Potentiometer : public PotentiometerBase<t_detent>
     static constexpr void forceUpdateAsync()
     {
         // Read ADC value
-        const uint16_t adcValue = ADCPin:: template readResult<uint16_t>();
+        const uint16_t adcValue = ADCPin:: template read<uint16_t>();
 
         // Force update of the ADC value
         s_lastAdcValue = adcValue;
