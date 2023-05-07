@@ -18,7 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef DEBUG_PRINT_H
 #define DEBUG_PRINT_H
 
-#include <type_traits>
+#include <type_traits.h>
 
 // Debug console printer as described here https://microchipsupport.force.com/s/article/print-out-the-string-variable-into-the-Atmel-studio-output-window
 template<typename T>
