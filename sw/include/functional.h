@@ -198,7 +198,7 @@ class function<void(Args...)>
     template<typename Invokable>
     CXX14_CONSTEXPR function(Invokable&& invokable)
     :
-    m_dispatcher(functionHelper::Dispatcher<typename decay<Invokable>::type, void, Args...>::dipatch),
+    m_dispatcher(functionHelper::Dispatcher<typename decay<Invokable>::type, void, Args...>::dispatch),
     m_invokable(&invokable)
     {}
 
@@ -209,7 +209,7 @@ class function<void(Args...)>
     */
     CXX14_CONSTEXPR function(void invokable(Args...))
     :
-    m_dispatcher(functionHelper::Dispatcher<void(Args...), void, Args...>::dipatch),
+    m_dispatcher(functionHelper::Dispatcher<void(Args...), void, Args...>::dispatch),
     m_invokable((void*)invokable)
     {
         static_assert(sizeof(void*) == sizeof(invokable), "Functions cannot be passed by reference");
