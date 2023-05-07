@@ -71,7 +71,7 @@ class String
 {
     public:
     
-    using size_type = size_t;
+    using size_type = typename Allocator::size_type;
     using iterator = char*;
     using const_iterator = const char*;
     
