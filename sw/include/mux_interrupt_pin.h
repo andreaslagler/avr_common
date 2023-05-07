@@ -18,6 +18,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef MUX_INTERRUPT_PIN_H
 #define MUX_INTERRUPT_PIN_H
 
+
+#include <stdint.h>
+#include <stdbool.h>
+#include "subject.h"
+
 /**
 @brief Generic driver for an interrupt multiplexer
 @tparam Device Actual multiplexer device driver class implementing static methods getNofLines() and getLine()
