@@ -18,7 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef PARAM_H
 #define PARAM_H
 
-#include "type_traits.h"
+#include <limits.h>
 
 /**
 @brief Template class implementing a generic numerical UI parameter
