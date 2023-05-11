@@ -172,7 +172,7 @@ Subject<void> InterruptMux<Device, t_usedPinIdx ...>::Pin<t_pinIdx, true>::s_sub
 
 template <typename Device, uint8_t ... t_usedPinIdx>
 template <uint8_t t_pinIdx>
-bool InterruptMux<Device, t_usedPinIdx ...>::Pin<t_pinIdx, true>::s_interruptEnabled = false;
+bool InterruptMux<Device, t_usedPinIdx ...>::Pin<t_pinIdx, true>::s_interruptEnabled = true;
 
 /**
 @brief Driver for an individual pin of an interrupt multiplexer device
