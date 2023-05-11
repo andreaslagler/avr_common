@@ -20,16 +20,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "ring_buffer.h"
+#include <static_deque.h>
+#include <queue.h>
 
 /**
 @brief Driver class for tx-buffered USART using a static Decorator approach
 @tparam USART Driver for underlying USART
-@tparam t_txBufferSizePow2 Tx buffer size given as a power of two
+@tparam t_txBufferSize Tx buffer size
 */
-template <
-typename _USART,
-uint8_t t_txBufferSizePow2>
+template <typename _USART, uint8_t t_txBufferSize>
 class BufferedUSART : _USART
 {
     public:
@@ -42,16 +41,16 @@ class BufferedUSART : _USART
     */
     static void transmitNextByte() __attribute__((always_inline))
     {
-        uint8_t data;
-        if (s_txBuffer.read(data))
+        if (s_txBuffer.empty())
         {
-            // Transmit next data byte
-            USART::put(data);
+            // Stop USART transmission when Tx buffer runs empty
+            USART::stopTransmission();
         }
         else
         {
-            // Stop USART transmission when ring buffer runs empty
-            USART::stopTransmission();
+            // Transmit next data byte
+            USART::put(s_txBuffer.front());
+            s_txBuffer.pop();
         }
     }
 
@@ -63,7 +62,11 @@ class BufferedUSART : _USART
     static bool put(const uint8_t data)
     {
         // Queue data in Tx ring buffer
-        const bool txOK = s_txBuffer.write(data);
+        const bool txOK = s_txBuffer.size() < t_txBufferSize;
+        if (txOK)
+        {
+            s_txBuffer.push(data);
+        }
 
         // Start USART transmission
         USART::startTransmission();
@@ -77,13 +80,13 @@ class BufferedUSART : _USART
     private:
     
     // Tx buffer
-    static RingBuffer<uint8_t, t_txBufferSizePow2, true> s_txBuffer;
+    static Queue<uint8_t, StaticDeque<uint8_t, t_txBufferSize>> s_txBuffer;
 };
 
 // static initialization
 template <
 typename USART,
-uint8_t t_txBufferSizePow2>
-RingBuffer<uint8_t, t_txBufferSizePow2, true> BufferedUSART<USART, t_txBufferSizePow2>::s_txBuffer;
+uint8_t t_txBufferSize>
+Queue<uint8_t, StaticDeque<uint8_t, t_txBufferSize>> BufferedUSART<USART, t_txBufferSize>::s_txBuffer;
 
 #endif
