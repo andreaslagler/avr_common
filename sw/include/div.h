@@ -138,4 +138,17 @@ constexpr uint8_t mod(uint8_t & numerator)
     return remainder - numerator * t_denominator;
 }
 
+/**
+@brief Unsigned 16 bit integer division by a compile-time constant.
+@tparam t_denominator Denominator
+@param numerator Numerator
+@result Numerator / Denominator
+*/
+template <uint16_t t_denominator>
+constexpr uint16_t div(const uint16_t numerator)
+{
+    return numerator / t_denominator;
+}
+
+
 #endif

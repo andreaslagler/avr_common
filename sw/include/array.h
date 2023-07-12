@@ -27,7 +27,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stddef.h> // ptrdiff_t
 #include "exception.h"
 #include "algorithm.h" // swap(), fill()
-#include <type_traits> // DownCast
+#include <type_traits.h> // DownCast
 
 /**
 @brief Static contiguous array

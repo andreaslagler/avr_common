@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 #include "buffered_lcd.h"
 
+#include <string_stream.h>
 
 void print(const char * str)
 {
@@ -83,118 +84,87 @@ using LCD = LCDAlphanumericBuffered<DummyLCD>;
 
 int main()
 {
+    
     LCD::init();
+    LCD::refresh();
+
+    StringStream<typename LCD::FrameBuffer> oss(LCD::getBuffer());
     
-    LCD::put("Hello World!");
+    oss << String("Hello\nWorld!");
     LCD::refresh();
-    
-    LCD::clear();
-    LCD::put("PROGRAM MEMORY"_pgm); 
+    oss << upperCase << String("\nHallo");
     LCD::refresh();
-
-    LCD::clear();    
-    LCD::put(String<12>("DATA MEMORY"));
-    LCD::refresh();
-
-    LCD::clear();
-    LCD::putNum(static_cast<uint8_t>(1));
-    LCD::refresh();
-
-    LCD::clear();
-    LCD::putNum(static_cast<uint8_t>(12));
-    LCD::refresh();
-
-    LCD::clear();
-    LCD::putNum(static_cast<uint8_t>(123));
-    LCD::refresh();
-
-    LCD::clear();
-    LCD::putNum2(static_cast<uint8_t>(1));
-    LCD::refresh();
-
-    LCD::clear();
-    LCD::putNum2(static_cast<uint8_t>(12));
-    LCD::refresh();
-
-    LCD::clear();
-    LCD::putNum2(static_cast<uint8_t>(123));
-    LCD::refresh();
-
-    LCD::clear();
-    LCD::putNum1(static_cast<uint8_t>(1));
-    LCD::refresh();
-
-    LCD::clear();
-    LCD::putNum1(static_cast<uint8_t>(12));
-    LCD::refresh();
-
-    LCD::clear();
-    LCD::putNum1(static_cast<uint8_t>(123));
-    LCD::refresh();
-
-    LCD::clear();
-    LCD::putNum(static_cast<int8_t>(1));
-    LCD::refresh();
-
-    LCD::clear();
-    LCD::putNum(static_cast<int8_t>(12));
-    LCD::refresh();
-
-    LCD::clear();
-    LCD::putNum(static_cast<int8_t>(123));
-    LCD::refresh();
-
-    LCD::clear();
-    LCD::putNum(static_cast<int8_t>(-1));
-    LCD::refresh();
-
-    LCD::clear();
-    LCD::putNum(static_cast<int8_t>(-12));
-    LCD::refresh();
-
-    LCD::clear();
-    LCD::putNum(static_cast<int8_t>(-123));
-    LCD::refresh();
-
-    LCD::clear();
-    LCD::putNum(static_cast<uint16_t>(1));
-    LCD::refresh();
-
-    LCD::clear();
-    LCD::putNum(static_cast<uint16_t>(12));
-    LCD::refresh();
-
-    LCD::clear();
-    LCD::putNum(static_cast<uint16_t>(123));
-    LCD::refresh();
-
-    LCD::clear();
-    LCD::putNum(static_cast<uint16_t>(1234));
-    LCD::refresh();
-
-    LCD::clear();
-    LCD::putNum(static_cast<uint16_t>(12345));    
+    oss << String("\nWelt!");
     LCD::refresh();
     
-    LCD::clear();    
-    LCD::putNum3(static_cast<uint16_t>(1));
+    oss.str().clear();
+    oss << "PROGRAM MEMORY"_pgm; 
     LCD::refresh();
 
-    LCD::clear();
-    LCD::putNum3(static_cast<uint16_t>(12));
+    oss.str().clear();    
+    oss << String("DATA MEMORY");
     LCD::refresh();
 
-    LCD::clear();
-    LCD::putNum3(static_cast<uint16_t>(123));
+    oss.str().clear();
+    oss << static_cast<uint8_t>(1);
     LCD::refresh();
 
-    LCD::clear();
-    LCD::putNum3(static_cast<uint16_t>(1234));
+    oss.str().clear();
+    oss << static_cast<uint8_t>(12);
     LCD::refresh();
 
-    LCD::clear();
-    LCD::putNum3(static_cast<uint16_t>(12345));
+    oss.str().clear();
+    oss << static_cast<uint8_t>(123);
+    LCD::refresh();
+
+    oss.str().clear();
+    oss << static_cast<int8_t>(1);
+    LCD::refresh();
+
+    oss.str().clear();
+    oss << static_cast<int8_t>(12);
+    LCD::refresh();
+
+    oss.str().clear();
+    oss << static_cast<int8_t>(123);
+    LCD::refresh();
+
+    oss.str().clear();
+    oss << static_cast<int8_t>(-1);
+    LCD::refresh();
+
+    oss.str().clear();
+    oss << static_cast<int8_t>(-12);
+    LCD::refresh();
+
+    oss.str().clear();
+    oss << static_cast<int8_t>(-123);
+    LCD::refresh();
+
+    oss.str().clear();
+    oss << static_cast<uint16_t>(1);
+    LCD::refresh();
+
+    oss.str().clear();
+    oss << static_cast<uint16_t>(12);
+    LCD::refresh();
+
+    oss.str().clear();
+    oss << static_cast<uint16_t>(123);
+    LCD::refresh();
+
+    oss.str().clear();
+    oss << static_cast<uint16_t>(1234);
+    LCD::refresh();
+
+    oss.str().clear();
+    oss << static_cast<uint16_t>(12345);    
     LCD::refresh();
     
+    while(true);
+}
+
+void throw_bad_alloc()
+{
     while(true);
 }
