@@ -144,11 +144,11 @@ constexpr uint8_t mod(uint8_t & numerator)
 @param numerator Numerator
 @result Numerator / Denominator
 */
-//template <uint16_t t_denominator>
-//constexpr uint16_t div(const uint16_t numerator)
-//{
-    //return numerator / t_denominator;
-//}
+template <uint16_t t_denominator>
+constexpr uint16_t div(const uint16_t numerator)
+{
+    return numerator / t_denominator;
+}
 
 
 #endif
