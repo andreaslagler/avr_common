@@ -179,7 +179,6 @@ class String
     {
         reserve(len);
         memcpy(m_data, str, len);
-        m_data[len] = '\0';
         m_size = len;
     }
 
@@ -232,9 +231,21 @@ class String
         reserve(m_size + len);
         memcpy(m_data + m_size, str, len);
         m_size += len;
-        m_data[m_size] = '\0';
     }
 
+    /**
+    @brief Appends the given character to this string.
+    @param c The character to append.
+    */
+    CXX14_CONSTEXPR void pushBack(const char c)
+    {
+        if (m_size == m_capacity)
+        {
+            reserve(2 * m_capacity + 1);
+        }        
+        m_data[m_size++] = c;
+    }
+    
     /**
     @brief Clears the content of this string.
     */
@@ -275,10 +286,13 @@ class String
 
     /**
     @brief Returns the content of this string as a C-style string.
-    @return const charThe content of this string as a C-style string.
+    @return The content of this string as a C-style string.
     */
-    constexpr const char* data() const
+    constexpr const char* c_str() const
     {
+        // Append null terminator
+        reserve(m_size + 1);
+        m_data[m_size] = '\0';
         return m_data;
     }
 
@@ -292,11 +306,11 @@ class String
     {
         if (cap > m_capacity)
         {
-            const size_t new_cap = cap + 1;
+            const size_t new_cap = cap;
             char* const new_data = reinterpret_cast<char*>(m_allocator.allocate(new_cap));
             if (new_data != nullptr)
             {
-                memcpy(new_data, m_data, m_size + 1);
+                memcpy(new_data, m_data, m_size);
                 m_allocator.deallocate(m_data);
                 m_data = new_data;
                 m_capacity = new_cap;
