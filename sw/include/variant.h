@@ -268,7 +268,7 @@ class Variant
     constexpr explicit Variant(in_place_type_t<Type>, Args&&... args)
     {
         static_assert(isPartOfV<Type>, "Invalid type");
-        new (getPtr<Type>()) Type(forward<Args...>(args...));
+        new (getPtr<Type>()) Type(forward<Args>(args)...);
         m_index = typeToIndexV<Type>;
     }
     
@@ -281,7 +281,7 @@ class Variant
     {
         using Type = IndexToTypeT<t_index>;
         static_assert(isPartOfV<Type>, "Invalid type");
-        new (getPtr<Type>()) Type(forward<Args...>(args...));
+        new (getPtr<Type>()) Type(forward<Args>(args)...);
         m_index = t_index;
     }
 
@@ -438,7 +438,7 @@ class Variant
         static_assert(isPartOfV<Type>, "Invalid type");
         destroy();
         m_index = typeToIndexV<Type>;
-        return *(new (getPtr<Type>()) Type(forward<Args...>(args...)));
+        return *(new (getPtr<Type>()) Type(forward<Args>(args)...));
     }
     
     /**
@@ -451,7 +451,7 @@ class Variant
     template <size_type t_index, typename... Args >
     constexpr IndexToTypeT<t_index>& emplace(Args&&... args)
     {
-        return emplace<IndexToTypeT<t_index>>(forward<Args...>(args...));
+        return emplace<IndexToTypeT<t_index>>(forward<Args>(args)...);
     }
     
     /**
