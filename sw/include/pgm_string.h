@@ -58,7 +58,19 @@ class PgmString
         const char* m_ptr = nullptr;
     };
 
+    constexpr PgmString() = default;
+
+    constexpr PgmString(const PgmString& rhs) : m_string(rhs.m_string), m_size(rhs.m_size)
+    {}
+
     ~PgmString() = default;
+    
+    constexpr PgmString& operator=(const PgmString& rhs)
+    {
+        m_string = rhs.m_string;
+        m_size = rhs.m_size;
+        return *this;
+    }
     
     constexpr Iterator begin() const
     {
@@ -88,7 +100,6 @@ class PgmString
     template <typename Char, Char ... t_string>
     friend constexpr PgmString operator "" _pgm();
     #pragma GCC diagnostic pop
-
     
     constexpr PgmString(const char* str, const uint8_t size)
     :
@@ -96,8 +107,8 @@ class PgmString
     m_size(size)
     {}
 
-    const char * const m_string = nullptr;
-    const uint8_t m_size = 0;
+    const char * m_string = nullptr;
+    uint8_t m_size = 0;
     
     // Nested container to store a string literal in PROGMEM using an avr-gcc extension as described here: https://www.mikrocontroller.net/topic/410966
     template <typename Char, Char ... t_string>
