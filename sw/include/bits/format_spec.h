@@ -58,7 +58,7 @@ struct FormatSpec
     };
     static constexpr Alignment leftAlign = {false};
     static constexpr Alignment rightAlign = {true};
-    Alignment m_alignment = leftAlign;
+    Alignment m_alignment = rightAlign;
 
     struct FillChar
     {

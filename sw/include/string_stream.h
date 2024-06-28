@@ -58,6 +58,16 @@ class StringStream
     }
 
     /**
+    @brief Clear the string stream
+    Clears the string stream and its underlying string implementation
+    */
+    constexpr void clear()
+    {
+        m_stringImpl.clear();
+        m_formatSpec = FormatSpec();
+    }
+
+    /**
     @brief Stream operator for format specification
     @param spec Format specification for booleans
     @result Reference to this object
