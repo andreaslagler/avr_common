@@ -198,6 +198,20 @@ namespace to_string_helper
 };
 
 /**
+@brief Convert a character to string
+@tparam StringImpl Used string implementation
+@param str String implementation
+@param value character to convert to string
+@formatSpec Format specification to be used for conversion
+*/
+template <typename StringImpl>
+constexpr void toString(StringImpl& str, const char value, const FormatSpec& formatSpec)
+{
+    // Insert actual string
+    to_string_helper::putChar(str, value, formatSpec);
+}
+
+/**
 @brief Convert boolean to string
 @tparam StringImpl Used string implementation
 @param str String implementation
