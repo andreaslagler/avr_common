@@ -99,6 +99,10 @@ class TypeMap
     
     // This is the resulting type pack
     using type = decltype(ConcatenateTypePacks(PrevTypePack(), CurrTypePack()));
+
+    // This the type at given index in the map
+    template <size_t t_index>
+    using IndexToTypeT = TypeMapElemDispatcher<t_index, Default, UsedElements...>::type;
 };
     
 /**
@@ -112,6 +116,9 @@ class TypeMap <1, Default, UsedElements...>
     public:
     
     using type = TypePack<typename TypeMapElemDispatcher<0, Default, UsedElements...>::type>;
+
+    template <size_t t_index>
+    using IndexToTypeT = TypeMapElemDispatcher<t_index, Default, UsedElements...>::type;
 };
 
 /**
