@@ -184,7 +184,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     template<class T> struct is_rvalue_reference;
     template<class T> struct is_member_object_pointer;
     template<class T> struct is_member_function_pointer;
-    template<class T> struct is_enum;
+    template<class T> struct is_enum { static constexpr bool value = __is_enum(T); };
     template<class T> struct is_union;
     template<class T> struct is_class;
     
@@ -371,6 +371,9 @@ template<class Ret, class... Args> struct is_function<Ret(Args......) const vola
     template<class T, class F>
     struct conditional<false, T, F> { using type = F; };
 
+    template<bool b, class T, class F>
+    using conditional_t      = typename conditional<b, T, F>::type;
+    
     template<class T> struct decay
     {
         private:
@@ -396,7 +399,7 @@ template<class Ret, class... Args> struct is_function<Ret(Args......) const vola
     template<class T, class U, template<class> class TQual, template<class> class UQual>
     struct basic_common_reference { };
     template<class... T> struct common_reference;
-    template<class T> struct underlying_type;
+    template<class T> struct underlying_type : public conditional<is_enum<T>::value && (sizeof(T) < 9), conditional_t<(sizeof(T) > 4), uint64_t, conditional_t<(sizeof(T) > 2), uint32_t, conditional_t<(sizeof(T) > 1), uint16_t, uint8_t>>>, T> {};
     template<class Fn, class... ArgTypes> struct invoke_result;
     template<class T> struct unwrap_reference;
     template<class T> struct unwrap_ref_decay;
@@ -409,8 +412,6 @@ template<class Ret, class... Args> struct is_function<Ret(Args......) const vola
     using decay_t            = typename decay<T>::type;
     template<bool b, class T = void>
     using enable_if_t        = typename enable_if<b, T>::type;
-    template<bool b, class T, class F>
-    using conditional_t      = typename conditional<b, T, F>::type;
     template<class... T>
     using common_type_t      = typename common_type<T...>::type;
     template<class... T>

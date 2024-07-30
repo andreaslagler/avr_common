@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define LOOKUP_TABLE_H
 
 #include <utility.h>
+#include <type_traits.h>
 
 #include <avr/pgmspace.h>
 
@@ -64,7 +65,7 @@ class SparseLUT
         {
             if (t_length > entry.first)
             {
-                m_data[entry.first] = entry.second;
+                m_data[static_cast<IntIdx>(entry.first)] = entry.second;
             }                
         }
     }
@@ -88,7 +89,7 @@ class SparseLUT
         {
             if (t_length > entry.first)
             {
-                ret.m_data[entry.first] = entry.second;
+                ret.m_data[static_cast<IntIdx>(entry.first)] = entry.second;
             }
         }
         
@@ -101,7 +102,7 @@ class SparseLUT
     */
     constexpr const Elem & operator() (const Idx idx) const
     {
-        return m_data[idx];
+        return m_data[static_cast<IntIdx>(idx)];
     }
 
     /**
@@ -111,12 +112,16 @@ class SparseLUT
     */
     const Elem getP(const Idx idx) const
     {
-        return memread_P(&m_data[idx]);
+        return memread_P(&m_data[static_cast<IntIdx>(idx)]);
     }
 
     protected:
 
-    Elem m_data[t_length];
+    // If Idx is an enum, IntIdx is the corresponding integral type
+    using IntIdx = underlying_type_t<Idx>;
+    
+    // The actual table
+    Elem m_data[static_cast<IntIdx>(t_length)];   
 };
 
 #endif
