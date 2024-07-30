@@ -86,6 +86,12 @@ class PgmString
     {
         return m_size;
     }
+    
+    char operator[](const size_t pos)
+    {
+        const char * ptr = m_string + pos;
+        return *Iterator(ptr);
+    }
 
     private:
     
