@@ -20,6 +20,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <type_traits.h>
+#include <utility.h>
 
 struct nullopt_t
 {};
@@ -29,6 +31,20 @@ inline constexpr nullopt_t nullopt;
 template <typename T>
 class Optional
 {
+    //template < class U >
+    //Optional( const Optional<U>& other );
+//
+    //template < class U >
+    //Optional( Optional<U>&& other );
+//
+    //template< class U, class... Args >
+    //constexpr explicit Optional( in_place_t,
+    //std::initializer_list<U> ilist,
+    //Args&&... args );
+//
+    //template < class U = T >
+    //constexpr Optional( U&& value );
+
     public:
     
     constexpr Optional()
@@ -41,14 +57,6 @@ class Optional
     :
     m_dummy(0),
     m_hasValue(false)
-    {}
-    
-    
-    
-    Optional(const T & value)
-    :
-    m_value(value),
-    m_hasValue(true)
     {}
     
     Optional(T && value)
@@ -68,6 +76,14 @@ class Optional
     m_value(move(arg.m_value)),
     m_hasValue(true)
     {}
+        
+        template< class... Args >
+        constexpr explicit Optional( in_place_t, Args&&... args )
+        :
+        m_value(forward<Args>(args)...),
+        m_hasValue(true)
+        {}
+
     
     ~Optional()
     {
@@ -104,16 +120,24 @@ class Optional
     
     bool m_hasValue;
 };
-template <typename T>
-inline constexpr Optional<T> makeOptional(T&& value)
+
+template< class T >
+constexpr Optional<decay_t<T>> makeOptional( T&& value )
 {
-    return Optional<T>(forward<T>(value));
+    return Optional<decay_t<T>>(forward<T>(value));
 }
 
-template <typename T>
-inline constexpr Optional<T> makeOptional(const T& value)
+template< class T, class... Args >
+constexpr Optional<T> makeOptional( Args&&... args )
 {
-    return Optional<T>(value);
-}
+    return Optional<T>(in_place, forward<Args>(args)...);
+}    
+
+//template< class T, class U, class... Args >
+//constexpr Optional<T> makeOptional( initializer_list<U> il, Args&&... args )
+//{
+    //return Optional<T>(std::in_place, il, forward<Args>(args)...);
+//}
+
 
 #endif
