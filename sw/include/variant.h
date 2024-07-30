@@ -114,15 +114,12 @@ constexpr auto get(Variant<Types...>&& v) -> variantHelper::IndexToTypeT<t_index
 template <size_t t_index, typename... Types>
 constexpr auto get(const Variant<Types...>& v) -> const variantHelper::IndexToTypeT<t_index, Types...>&;
 
-template <size_t t_index, typename... Types>
-constexpr auto get(const Variant<Types...>&& v) -> variantHelper::IndexToTypeT<t_index, Types...>&&;
-
 namespace variantHelper
 {
     // Simple invocation function
     // This function can be extended for other callables as needed
     template<class Functor, class... Args>
-    constexpr auto invoke(Functor&& f, Args&&... args)
+    constexpr auto invoke(Functor&& f, Args&&... args) -> decltype(f(args...))
     {
         return forward<Functor>(f)(forward<Args>(args)...);
     }
@@ -713,7 +710,7 @@ Checks if the variant v holds the alternative Type. The call is ill-formed if T 
 template <typename Type, typename... Types >
 constexpr bool holdsAlternative(const Variant<Types...>& v)
 {
-    return v.index() == variantHelper::typeToIndexV<Type>;
+    return v.index() == variantHelper::typeToIndexV<Type, Types...>;
 }
 
 /**
