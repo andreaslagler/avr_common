@@ -21,6 +21,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <stdbool.h>
 
+struct nullopt_t
+{};
+    
+inline constexpr nullopt_t nullopt;
+
 template <typename T>
 class Optional
 {
@@ -32,9 +37,35 @@ class Optional
     m_hasValue(false)
     {}
     
+    constexpr Optional(nullopt_t)
+    :
+    m_dummy(0),
+    m_hasValue(false)
+    {}
+    
+    
+    
     Optional(const T & value)
     :
     m_value(value),
+    m_hasValue(true)
+    {}
+    
+    Optional(T && value)
+    :
+    m_value(forward<T>(value)),
+    m_hasValue(true)
+    {}
+        
+    Optional(const Optional& arg)
+    :
+    m_value(arg.m_value),
+    m_hasValue(true)
+    {}
+    
+    Optional(Optional && arg)
+    :
+    m_value(move(arg.m_value)),
     m_hasValue(true)
     {}
     
@@ -73,5 +104,16 @@ class Optional
     
     bool m_hasValue;
 };
+template <typename T>
+inline constexpr Optional<T> makeOptional(T&& value)
+{
+    return Optional<T>(forward<T>(value));
+}
+
+template <typename T>
+inline constexpr Optional<T> makeOptional(const T& value)
+{
+    return Optional<T>(value);
+}
 
 #endif
