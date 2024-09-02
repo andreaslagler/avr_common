@@ -288,7 +288,7 @@ class String
     @brief Returns the content of this string as a C-style string.
     @return The content of this string as a C-style string.
     */
-    constexpr const char* c_str() const
+    constexpr const char* c_str()
     {
         // Append null terminator
         reserve(m_size + 1);
