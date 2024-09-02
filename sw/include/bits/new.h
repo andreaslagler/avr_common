@@ -25,13 +25,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 constexpr inline void* operator new (size_t, void* ptr)
 {
     return ptr;
-};
+}
 
 // Placement new[]() operator
 constexpr inline void* operator new[] (size_t, void* ptr)
 {
     return ptr;
-};
+}
 
 
 #endif
